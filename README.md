@@ -10,7 +10,7 @@
 - **Easy to Use**: Simple setup and intuitive interface.
 
 ## Purpose
-Eth Rat is designed to help cybersecurity students, researchers, and professionals practice remote administration techniques in a safe and ethical manner. It is **not intended for malicious use**.
+Eth Rat is written to help practice remote administration techniques in a safe and ethical manner. It is **not intended for malicious use**.
 
 ## Usage
 1. Start the server on your machine.
