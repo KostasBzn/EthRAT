@@ -16,7 +16,7 @@ Eth Rat is written to help practice remote administration techniques in a safe a
 1. Start the server on your machine.
 2. Connect clients to the server.
 3. Use the interactive command loop to manage connected systems.
-4. type `getip` to get the clients public IP.
+4. Type `getip` to get the clients public IP.
 4. Type `back` to return to the main menu, `exit` to shut down the server or `list` to list the connected clients.
 
 ## Ethical Disclaimer
