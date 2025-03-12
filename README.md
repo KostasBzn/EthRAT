@@ -1,6 +1,6 @@
 # Eth Rat 🐀
 
-**Eth Rat** is an **ethical remote administration tool (RAT)** for cybersecurity education and testing. It allows you to remotely manage and interact with systems in a controlled, ethical environment.
+**Eth Rat** is an **ethical remote administration tool (RAT)** for cybersecurity education and testing purpose. It allows you to remotely manage and interact with systems in a controlled, ethical environment.
 
 ## Features
 - **Remote Command Execution**: Send commands to connected clients.
@@ -16,7 +16,7 @@ Eth Rat is written to help practice remote administration techniques in a safe a
 1. Start the server on your machine.
 2. Connect clients to the server.
 3. Use the interactive command loop to manage connected systems.
-4. Type `back` to return to the main menu or `exit` to shut down the server.
+4. Type `back` to return to the main menu, `exit` to shut down the server or `list` to list the connected clients.
 
 ## Ethical Disclaimer
 This tool is strictly for educational and ethical purposes. Misuse of this software is prohibited.
