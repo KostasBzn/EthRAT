@@ -3,7 +3,6 @@ import threading
 import os
 from colorama import Fore
 import ctypes
-import sys
 
 clients = {}
 shutdown = False 
@@ -101,9 +100,13 @@ def start_server(host="0.0.0.0", port=4444):
             continue
 
         if choice == -1:
-            command = input("Enter command to send (broadcast): ")
-            for client in clients.values():
-                client.send(command.encode())
+            while True:
+                command = input("Enter command to send (broadcast): ")
+                if command.lower() == "back":
+                    print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
+                    break
+                for client in clients.values():
+                    client.send(command.encode())
         elif 0 <= choice < len(clients):
             target_addr = list(clients.keys())[choice]
             print(f"\n{Fore.YELLOW}[*]{Fore.RESET} Interracting with {target_addr[0]}")
