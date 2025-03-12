@@ -37,7 +37,7 @@ def handle_client(client_socket, addr, response_queue):
         try:
             response = client_socket.recv(4096).decode()
             if response:
-                response_queue.put((addr, response))  # Put the response in the queue
+                response_queue.put((addr, response)) 
             else:
                 break
         except (ConnectionResetError, BrokenPipeError, OSError):
