@@ -69,7 +69,7 @@ def start_server(lhost, lport):
     server.bind((lhost, lport))
     server.listen(5)
 
-    response_queue = queue.Queue()  # Create a thread-safe queue
+    response_queue = queue.Queue() 
     threading.Thread(target=accept_clients, args=(server, response_queue), daemon=True).start()
     os.system("cls" if os.name == "nt" else "clear")
     logo()
@@ -131,6 +131,7 @@ def start_server(lhost, lport):
             
             while True:
                 command = input(f"{target_addr[0]}> ")
+                # print('Double command debug')
                 if command.lower() == "back":
                     print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
                     break
