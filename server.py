@@ -69,7 +69,7 @@ def start_server(lhost, lport):
     server.bind((lhost, lport))
     server.listen(5)
 
-    response_queue = queue.Queue()
+    response_queue = queue.Queue()  # Create a thread-safe queue
     threading.Thread(target=accept_clients, args=(server, response_queue), daemon=True).start()
     os.system("cls" if os.name == "nt" else "clear")
     logo()
@@ -86,14 +86,13 @@ def start_server(lhost, lport):
 
         try:
             choice = input("Select client number (or 0 to broadcast): ")
-
             if choice.lower() == "exit":
                 print(f"[{Fore.YELLOW}*{Fore.RESET}] Shutting down server...")
                 shutdown = True
                 server.close()
-                print(f"[{Fore.GREEN}+{Fore.RESET}] Server closed.")
                 for client in clients.values():
                     client.close()
+                print(f"\n[{Fore.GREEN}+{Fore.RESET}] Server closed.")
                 break
             elif choice.lower() == "list":
                 print("\n[Connected Clients]")
