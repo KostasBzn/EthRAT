@@ -1,6 +1,6 @@
 # Eth Rat 🐀
 
-**Eth Rat** is an **ethical remote shell tool (RAT)** for cybersecurity education and testing purpose. It is written in python, and it allows you to remotely manage and interact with systems in a controlled, ethical environment.
+**Eth Rat** is an **ethical remote shell tool (RAT)** for cybersecurity education and testing purpose. It is written in Python, and it allows you to remotely manage and interact with systems in a controlled, ethical environment.
 
 ## Features
 ✅ **Remote Command Execution** – Send commands to connected clients.  
