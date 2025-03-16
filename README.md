@@ -1,13 +1,14 @@
 # Eth Rat 🐀
 
-**Eth Rat** is an **ethical remote shell tool (RAT)** for cybersecurity education and testing purpose. It is written in Python, and it allows you to remotely manage and interact with systems in a controlled, ethical environment.
+**Eth Rat** is an **ethical remote shell tool (RAT)** for cybersecurity education and testing purposes. It is written in Python, and it allows you to remotely manage and interact with systems in a controlled, ethical environment.
 
 ## Features
-✅ **Remote Command Execution** – Send commands to connected clients.  
+✅ **Remote Command Execution** – Send and execute commands to connected clients.  
 ✅ **Multi-Client Management** – Manage multiple clients at once.  
 ✅ **Cross-Platform Compatibility** – Works on **Windows, Linux, and macOS** (client-side).  
 ✅ **Educational Focus** – Built for **learning and testing** in a responsible manner.  
 ✅ **User-Friendly Interface** – Simple setup with an interactive command menu.  
+✅ **Directory Navigation** – Use `cd` to navigate directories on the client.   
 
 ## Purpose
 Eth Rat is written to help practice remote shell techniques in a safe and ethical manner. It is **not intended for malicious use**.
@@ -18,6 +19,7 @@ Eth Rat is written to help practice remote shell techniques in a safe and ethica
 3. **Use the interactive command loop** to execute remote commands.  
 4. Supported commands:  
    - `getip` – Retrieve the client's public IP.  
+   - `cd <path>` – Change the working directory on the client.  
    - `list` – View connected clients.  
    - `back` – Return to the main menu.  
    - `exit` – Shut down the server.  
