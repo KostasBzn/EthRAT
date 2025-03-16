@@ -43,7 +43,7 @@ def start_client(server_ip, server_port):
                 # change the path
                 os.chdir(path)
 
-                # change to new directory
+                # change to the new directory
                 new_dir = os.getcwd()
                 output = f"Changed directory to {new_dir}"
             except Exception as e:
