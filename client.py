@@ -7,10 +7,6 @@ import ctypes
 SERVER_IP = "127.0.0.1"
 SERVER_PORT = 4444
 
-# user32 = ctypes.windll.user32
-# kernel32 = ctypes.windll.kernel32
-# hwnd = kernel32.GetConsoleWindow()
-
 def start_client(server_ip, server_port):
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((server_ip, server_port))
