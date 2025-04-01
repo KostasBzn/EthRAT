@@ -81,8 +81,6 @@ def get_client_by_index(clients, choice):
         print(f"{red}Invalid choice. Type 'list' for connected clients.{reset}")
         return None, None
 
-
-
 def handle_client(socket):
     """Handle incoming client connections"""
     while server_active:
