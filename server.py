@@ -225,7 +225,6 @@ def command_handler(cl_addr, cl_socket):
             print(f"\n{red}[-]{reset} Error: {e}")
             continue
 
-# [Rest of the server code remains the same...]
 def start_server(lhost, lport):
     global server_active
     try:
