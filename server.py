@@ -190,7 +190,7 @@ def receive_directory(socket, base_path):
         path_data = recv(socket)
         try:
             rel_path = path_data.decode('utf-8')
-            print(f"received rel path: {rel_path}")
+            print(f"received: {rel_path}")
         except UnicodeDecodeError:
             print(f"invalid path: {path_data.hex()}")
             raise
