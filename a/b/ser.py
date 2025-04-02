@@ -157,10 +157,10 @@ def download(cl_socket, cmd):
         
         send(cl_socket, cmd.encode())
         response = recv(cl_socket).decode()
-        #print("client response download function", response)
-        if response == "ready*+~":
+        print("client response download function", response)
+        if response == "ready":
             file_type = recv(cl_socket).decode() 
-            if file_type == "*is_dir+~":
+            if file_type == "dir~%*":
                 receive_directory(cl_socket, full_save_path)
             elif file_type == "file~%*":
                 receive_file(cl_socket, full_save_path)
@@ -182,22 +182,20 @@ def receive_file(socket, save_path):
             f.write(chunk)
 
 def receive_directory(socket, base_path):
+    """Receive folder structure from client"""
+    print("Directory download base path:", base_path)
     os.makedirs(base_path, exist_ok=True)
-    count_data = recvall(socket, 4)
-    num_files = struct.unpack('>I', count_data)[0]
-    print(f"expecting {num_files} files")
+    num_files = struct.unpack('>I', recvall(socket, 4))[0]
+    print("Number of files:", num_files)
     for _ in range(num_files):
-        path_data = recv(socket)
-        try:
-            rel_path = path_data.decode('utf-8')
-            print(f"received rel path: {rel_path}")
-        except UnicodeDecodeError:
-            print(f"invalid path: {path_data.hex()}")
-            raise
+        rel_path = recv(socket).decode()
+        print("Relative file path receive_directory function:", rel_path)
         full_path = os.path.join(base_path, rel_path)
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        print("Full file path receive_directory function:", full_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True) 
         receive_file(socket, full_path)
-    
+
+
 def upload():
     print("Upload logic")
 

