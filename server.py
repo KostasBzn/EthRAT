@@ -198,8 +198,14 @@ def receive_directory(socket, base_path):
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         receive_file(socket, full_path)
     
-def upload():
-    print("Upload logic")
+def upload(cl_socket, cmd):
+    file_path, file_name = open_file()
+    send(cl_socket, cmd.encode())
+    response = recv(cl_socket).decode()
+    print(f"Selected file: {file_name}")
+    print(f"Selected file path: {file_path}")
+    print("Upload logic server")
+    print("upload response client:", response)
 
 def send_file():
     pass
@@ -223,7 +229,6 @@ def open_file():
         print(f"{red}No file selected.{reset}")
         return
     file_name = os.path.basename(file_path)
-    print(f"Selected file: {file_name}")
     return file_path, file_name
 
 
@@ -257,15 +262,12 @@ def command_handler(cl_addr, cl_socket):
                 else:
                     print(f"{red}[!] No response from client{reset}")
 
-            elif cmd.startswith("download"):
+            elif cmd.lower().startswith("download"):
                 download(cl_socket, cmd)
-            elif cmd == "upload":
-                open_file()
-                print("upload logic")
-
+            elif cmd.lower().startswith("upload"):
+                upload(cl_socket, cmd)
             elif cmd.lower() == "back":
                 return
-                
             else:
                 send(cl_socket, cmd.encode())
                 response = recv(cl_socket)

