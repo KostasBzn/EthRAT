@@ -39,22 +39,22 @@ logo = red + r"""
 def help():
     """ Help Menu """
     print(green + """
-    |---------------------------------|--------------------------------------------|
-    |      Commands                   |                Description                 |
-    |---------------------------------|--------------------------------------------|
-    |---------------------------------|----Main Menu-------------------------------|
-    |       help                      | Display help menu                          |
-    |       list                      | List the connected clients                 |
-    |       0                         | Broadcast to all clients                   |
-    |       <clientId>                | Interract with client                      |
-    |       exit                      | Stop the server                            |
-    |---------------------------------|--Interracting mode-------------------------|
-    |       kill                      | Kill connection with client                |
-    |       download <file/folder>    | Download file/directory from client        |
-    |       upload                    | Upload file to client (opens file dialog)  |
-    |       cd                        | Browse to a directory                      |
-    |       getip                     | Get the clients public and local IP        |
-    |---------------------------------|--------------------------------------------|
+    |---------------------------------------------------------------|
+    |      Commands      |                Description               |
+    |---------------------------------------------------------------|
+    |-----------------------Main Menu-------------------------------|
+    |       help         | Display help menu                        |
+    |       list         | List the connected clients               |
+    |       0            | Broadcast to all clients                 |
+    |       <clientId>   | Interract with client                    |
+    |       exit         | Stop the server                          |
+    |---------------------Interracting mode-------------------------|
+    |       kill         | Kill connection with client              |
+    |       download     | Download file/directory from client      |
+    |       upload       | Upload file/directory to client          |
+    |       cd           | Browse to a directory                    |
+    |       getip        | Get the clients public IP                |
+    |---------------------------------------------------------------|
     """ + reset)
 
 def window_title(clients):
@@ -81,7 +81,7 @@ def get_client_by_index(clients, choice):
         return None, None
 
 def handle_client(socket):
-    """Handles incoming client connections"""
+    """Handle incoming client connections"""
     while server_active:
         try:
             client_socket, addr = socket.accept()
@@ -96,7 +96,7 @@ def handle_client(socket):
             continue
 
 def monitor_client(client_socket, addr):
-    """Handles disconnections"""
+    """Monitor client disconnection"""
     try:
         while True:
             data = client_socket.recv(1, socket.MSG_PEEK)
@@ -146,31 +146,26 @@ def recvall(sock, n):
         print(f"{red}Receive all failed: {e}{reset}")
 
 def download(cl_socket, cmd):
-    """
-    Download a file or a directory by typing the download and the name of the file/directory
-    Works with handhakes to start and stop the file transfer
-    """
     try:
         save_dir = save_file()
         file_path = cmd[8:].strip()
         file_name = os.path.basename(file_path)
         full_save_path = os.path.normpath(os.path.join(save_dir, file_name))
-        # print(f"File will be saved at: {full_save_path}")
+        print(f"File will be saved at: {full_save_path}")
         if not save_dir or not file_path or not file_name:
             return
         
         send(cl_socket, cmd.encode())
         response = recv(cl_socket).decode()
-        #print("client response download function", response)
-        if response == "ready*+~":
+        print("client response download function", response)
+        if response == "ready":
             file_type = recv(cl_socket).decode() 
-            #print("debug: filetype download ", file_type)
-            if file_type == "*is_dir+~":
+            if file_type == "dir~%*":
                 receive_directory(cl_socket, full_save_path)
             elif file_type == "file~%*":
                 receive_file(cl_socket, full_save_path)
             print(f"{green}[+] Download completed{reset}")
-            print(f"{green}[*] Saved to{reset} {full_save_path}")
+            print(f"Saved to {full_save_path}")
         else:
             print(f"{red}[!] Client error: {response}{reset}")
     except Exception as e:
@@ -187,65 +182,22 @@ def receive_file(socket, save_path):
             f.write(chunk)
 
 def receive_directory(socket, base_path):
+    """Receive folder structure from client"""
+    print("Directory download base path:", base_path)
     os.makedirs(base_path, exist_ok=True)
-    count_data = recvall(socket, 4)
-    num_files = struct.unpack('>I', count_data)[0]
-    print(f"{yellow}[*] Downloading {num_files} files...{reset}")
+    num_files = struct.unpack('>I', recvall(socket, 4))[0]
+    print("Number of files:", num_files)
     for _ in range(num_files):
-        path_data = recv(socket)
-        try:
-            rel_path = path_data.decode('utf-8')
-            print(f"received: {rel_path}")
-        except UnicodeDecodeError:
-            print(f"invalid path: {path_data.hex()}")
-            raise
+        rel_path = recv(socket).decode()
+        print("Relative file path receive_directory function:", rel_path)
         full_path = os.path.join(base_path, rel_path)
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        print("Full file path receive_directory function:", full_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True) 
         receive_file(socket, full_path)
-    
-def upload(cl_socket, cmd):
-    """Upload a file to the client"""
-    file_path, file_name = open_file()
-    cmd = f"{cmd} {file_name}"
-    send(cl_socket, cmd.encode())
-    try:
-        send(cl_socket, b"$up:start~+")
-        print(f"{yellow}[^] Uploading '{file_name}' to the client...{reset}")
-        with open(file_path,"rb") as file_up:
-          for data in iter(lambda: file_up.read(4096), b""):
-            try:
-              send(cl_socket, data)
-            except:
-              file_up.close()
-              send(cl_socket, b"up:aborted+*~")
-        send(cl_socket, b"up:done+*<+")
-        response = recv(cl_socket).decode()
-        print(f"{yellow}[*] Client response: {response}{reset}")
-        if not "error" in response.lower():
-            print(f"{green}[+] Upload successfull!{reset}")
-            return
-    except Exception as e:
-        print(f"{red}[!] File upload error: {e}{reset}")
-        send(cl_socket, b"up:aborted+*~")
-    
-    
 
-    # if os.path.isdir(file_path):
-    #     cl_socket.send(b"DIR_UPLOAD")
-    #     files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
-    #     cl_socket.send(struct.pack(">I", len(files)))
-        
-    #     for file in files:
-    #         filepath = os.path.join(file_path, file)
-    #         cl_socket.send(file.encode())  # Send filename
-    #         with open(filepath, "rb") as f:
-    #             cl_socket.send(f.read())   # Send raw file data
-    #         cl_socket.send(b"FILE_END")
-    # else:
-    #     cl_socket.send(b"FILE_UPLOAD")
-    #     with open(file_path, "rb") as f:
-    #         cl_socket.send(f.read())
-    #     cl_socket.send(b"FILE_END")
+
+def upload():
+    print("Upload logic")
 
 def send_file():
     pass
@@ -269,6 +221,7 @@ def open_file():
         print(f"{red}No file selected.{reset}")
         return
     file_name = os.path.basename(file_path)
+    print(f"Selected file: {file_name}")
     return file_path, file_name
 
 
@@ -302,12 +255,15 @@ def command_handler(cl_addr, cl_socket):
                 else:
                     print(f"{red}[!] No response from client{reset}")
 
-            elif cmd.lower().startswith("download"):
+            elif cmd.startswith("download"):
                 download(cl_socket, cmd)
-            elif cmd.lower().startswith("upload"):
-                upload(cl_socket, cmd)
+            elif cmd == "upload":
+                open_file()
+                print("upload logic")
+
             elif cmd.lower() == "back":
                 return
+                
             else:
                 send(cl_socket, cmd.encode())
                 response = recv(cl_socket)

