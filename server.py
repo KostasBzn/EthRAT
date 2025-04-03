@@ -277,12 +277,13 @@ def interact_user(cl_addr, cl_socket):
             cmd = input(f"\n{cyan}[$]{reset} {blue}{ip}:{port}>{reset} ").strip()
             if not cmd:
                 continue
-            elif cmd.lower() in ("back", "kill"):
-                return
             else:
                 command_handler(cl_addr, cl_socket, cmd)
+            if cmd.lower() in ("back", "kill"):
+                return
             continue
-    except (ConnectionResetError, ConnectionError, OSError) as e:
+
+    except (ConnectionResetError, OSError) as e:
         print(f"\n{red}[-]{reset} Connection lost: {e}")
         clients.pop(cl_addr, None)
         return
@@ -329,7 +330,7 @@ def start_server(lhost, lport):
         
         os.system("cls" if os.name == "nt" else "clear")
         print(logo)
-        print(yellow + "[*] Server Started On {}:{} < at [{}]".format(lhost, lport, datetime.now().strftime("%H:%M:%S")) + reset)
+        print(yellow + "[*] Server Listening On {}:{} < at [{}]".format(lhost, lport, datetime.now().strftime("%H:%M:%S")) + reset)
         threading.Thread(target=handle_client, args=(sock,), daemon=True).start()
 
         while server_active: 
