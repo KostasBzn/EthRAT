@@ -7,7 +7,7 @@
 - **Download Files/Folders from Client** – Download single files or whole directories. 
 - **Push files to Client** – Send files to the clients current directory.
 - **Multi-Client Management** – Manage multiple clients at once.  
-- **Cross-Platform Compatibility** – Works on **Windows, Linux, and macOS** (client-side).  
+- **Cross-Platform Compatibility** – Works on **Windows and Linux**.  
 - **Educational Focus** – Built for **learning and testing** in a responsible manner.  
 - **User-Friendly Interface** – Simple setup with an interactive command menu.  
 - **Directory Navigation** – Use `cd` to navigate directories on the client.   
