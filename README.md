@@ -12,6 +12,11 @@
 **User-Friendly Interface** – Simple setup with an interactive command menu.  
 **Directory Navigation** – Use `cd` to navigate directories on the client.   
 
+## Project Preview
+![Tool Screenshot](https://raw.githubusercontent.com/KostasBzn/EthRAT/refs/heads/main/png/Screenshot1.png)
+
+
+
 ## Purpose
 Eth Rat is written to help practice remote shell techniques in a safe and ethical manner. It is **not intended for malicious use**.
 
