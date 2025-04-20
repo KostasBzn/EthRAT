@@ -3,18 +3,18 @@ from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.completion import WordCompleter, NestedCompleter
 from src.ui.colors import Colors as cl
 from src.utils.client_handler import get_client_by_id, list_clients, clients
-from src.ui.help import show_main_help
+from src.ui.help import show_main_help, show_client_help
 
-session = PromptSession(history=InMemoryHistory())
 
-commands = ["sessions", "broadcast", "exit", "help"]  
-completer = WordCompleter(commands)  
-session = PromptSession(completer=completer, history=InMemoryHistory())  
 
 def main_loop():
+    cmd_commands = ["sessions", "broadcast", "exit", "help"]  
+    completer = WordCompleter(cmd_commands)  
+    cmd_session = PromptSession(completer=completer, history=InMemoryHistory())  
+
     while True:  
         try:  
-            cmd = session.prompt("cmd> ")  
+            cmd = cmd_session.prompt("cmd> ")  
             if cmd == "exit":  
                 if cmd == "exit":
                     confirm = input("Exit server? (y/n): ").lower()
@@ -28,9 +28,7 @@ def main_loop():
                 choice = cmd[8:].strip()
                 cl_info = get_client_by_id(clients, choice)
                 print(f"{cl.cyan}[+] Switching to client {cmd}{cl.reset}")
-                
-                print(f"Interract with client {cl_info['ip']}:{cl_info['port']} logic to implimented later")
-
+                client_loop(cl_info)
 
             elif cmd.strip() == "sessions":  
                 list_clients(clients) 
@@ -43,3 +41,42 @@ def main_loop():
             continue 
         except Exception as e:
             print(f"{cl.red}[!] Cmd error: {e}{cl.reset}")
+
+def client_loop(client_info):
+    """Handles the client-specific command loop"""
+    cl_prompt = f"client_{client_info['ip']}> "
+    cl_commands = ["shell", "download", "upload", "help", "back"]  
+    completer = WordCompleter(cl_commands)  
+    cl_session = PromptSession(completer=completer, history=InMemoryHistory())
+    
+    while True:
+        try:
+            cmd = cl_session.prompt(cl_prompt).strip()
+            
+            if cmd == "shell":
+                print(f"{cl.green}[+] Starting shell session on client {client_info['id']}...{cl.reset}")
+                
+            elif cmd.strip() == "download":
+                print(f"{cl.green}[+] Downloading..{cl.reset}")
+                    
+            elif cmd.strip() == "upload":
+                print(f"{cl.green}[+] Uploading..{cl.reset}")
+                
+            elif cmd == "getip":
+                print(f"{cl.cyan}[*] Client {client_info['id']} IP Report:")
+                print(f"    Local IP: {client_info.get('local_ip', 'unknown')}")
+                print(f"    Public IP: {client_info.get('public_ip', 'unknown')}{cl.reset}")
+                
+            elif cmd == "back":
+                print(f"{cl.blue}[+] Returning to main session{cl.reset}")
+                break
+                
+            elif cmd == "help":
+                show_client_help()
+                
+            elif cmd:
+                print(f"{cl.red}[!] Unknown command. Type 'help' for options.{cl.reset}")
+                
+        except KeyboardInterrupt:
+            print(f"\n{cl.yellow}[!] Type 'back' to return to main session{cl.reset}")
+            continue

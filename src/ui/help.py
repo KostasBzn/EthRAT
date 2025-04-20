@@ -18,7 +18,7 @@ def show_main_help():
     
     console.print(table)
 
-def client_help():
+def show_client_help():
     """Help menu when interacting with a client"""
     console = Console()
     
@@ -27,9 +27,9 @@ def client_help():
     table.add_column("Description", min_width=20)
     
     table.add_row("shell", "Start interactive shell")
-    table.add_row("download [file]", "Download file from client")
-    table.add_row("upload [local] [remote]", "Upload file to client")
-    table.add_row("screenshot", "Take screenshot")
+    table.add_row("download", "Download file/folder from client")
+    table.add_row("upload", "Upload file to client")
+    table.add_row("getip", "Get public and local ip from the client")
     table.add_row("back", "Return to main session")
     table.add_row("help", "Show this menu")
     
