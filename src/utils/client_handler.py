@@ -17,6 +17,16 @@ def list_clients(clients):
     else:
         print(f"{cl.red}[!] No clients connected.{cl.reset}")
 
+def get_client_by_id(clients, choice):
+    """ Get the client socket based on user choise """
+    for id, info in clients.items():
+        if int(choice) == id:
+            if info['status'] == 'online':
+                return info
+            else:
+                raise Exception("The current client is offline")
+    raise Exception("This session ID is not valid")
+        
 def client_disconnection(ip, port):
     """Changes the status when a client is disconnected """
     with client_lock:
@@ -35,7 +45,7 @@ def client_connection(client_socket, addr):
             print(f"{cl.green}[+] Client {addr[0]:}:{addr[1]} is online{cl.reset}")
             return   
     with client_lock:
-        cl_id = len(clients)
+        cl_id = max(clients.keys(), default=-1) + 1
         clients[cl_id] = {
             "ip": addr[0],
             "local_ip": "unknown",

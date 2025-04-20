@@ -1,6 +1,7 @@
 from src.ui.colors import Colors as cl
 from src.ui.art import banner
 from src.utils.client_handler import handle_client
+from src.utils.command_handler import main_loop
 from datetime import datetime
 import argparse
 import socket
@@ -25,7 +26,9 @@ def server():
         print(f"{cl.cyan }[*] Listening on {args.host}:{args.port}{cl.reset} {cl.light_green}@ {datetime.now().strftime("%H:%M:%S")}{cl.reset}")
         print(f"{cl.teal}[*] Type 'help' for commands or 'exit' to shutdown.{cl.reset}\n")
 
+        main_loop()
         handle_client(sock)
+        
 
     except (KeyboardInterrupt):
         print(f"{cl.yellow} [*] Interrupted by user, shutting down the server...")

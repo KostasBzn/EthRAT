@@ -10,6 +10,7 @@ def show_main_help():
     table.add_column("Command", style="dim", width=12)
     table.add_column("Description", min_width=20)
     
+    # Add commands
     table.add_row("sessions", "List all connected clients")
     table.add_row("sessions [ID]", "Interact with specific client")
     table.add_row("broadcast", "Send command to all clients")
@@ -18,19 +19,4 @@ def show_main_help():
     
     console.print(table)
 
-def client_help():
-    """Help menu when interacting with a client"""
-    console = Console()
-    
-    table = Table(title=f"{cl.cyan}Client Session Commands{cl.reset}", show_header=True, header_style="bold yellow")
-    table.add_column("Command", style="dim", width=12)
-    table.add_column("Description", min_width=20)
-    
-    table.add_row("shell", "Start interactive shell")
-    table.add_row("download [file]", "Download file from client")
-    table.add_row("upload [local] [remote]", "Upload file to client")
-    table.add_row("screenshot", "Take screenshot")
-    table.add_row("back", "Return to main session")
-    table.add_row("help", "Show this menu")
-    
-    console.print(table)
+show_main_help()
