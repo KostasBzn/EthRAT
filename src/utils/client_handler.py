@@ -1,4 +1,5 @@
 from src.ui.colors import Colors as cl
+from src.utils.net_io import recv
 import threading
 from threading import Lock
 import socket
@@ -19,7 +20,7 @@ def list_clients(clients):
         table.add_column("IP", min_width=13)
         table.add_column("PORT", min_width=8)
         table.add_column("MAC", min_width=20)
-        table.add_column("HOSTNAME", min_width=10)
+        table.add_column("HOSTNAME", min_width=12)
         table.add_column("LOCAL_IP", min_width=12)
         table.add_column("STATUS", min_width=10)
         table.add_column("LAST SEEN", min_width=15)
@@ -77,7 +78,7 @@ def handle_client(sock):
     """Accepts a single client connection """
     try:
         client_socket, addr = sock.accept()
-        data = client_socket.recv(1024)
+        data = recv(client_socket)
         if data:
             clinfo = json.loads(data.decode())
             client_connection(client_socket, addr, clinfo)

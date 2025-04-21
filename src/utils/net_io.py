@@ -2,9 +2,13 @@ import struct
 from src.ui.colors import Colors as cl
 
 def send(sock, data):
-    """ Bulk Send Commands And Data """
+    """Bulk Send Commands And Data"""
     try:
-        sock.sendall(struct.pack('>I', len(data)) + data)
+        if isinstance(data, str):
+            data = data.encode()
+        data_size = len(data)
+        sock.sendall(struct.pack('>I', data_size))  
+        sock.sendall(data) 
     except (ConnectionError, struct.error, OSError) as e:
         print(f"{cl.red}[!] Send failed: {e}{cl.reset}")
         raise
