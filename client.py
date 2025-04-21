@@ -74,7 +74,7 @@ def main():
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((IP, PORT))
         info = gsi()
-        sock.sendall(info.encode())
+        sock.sendall(info)
         print("Connected to server...")
 
         handle_cmd(sock)
