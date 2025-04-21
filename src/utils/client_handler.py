@@ -34,12 +34,19 @@ def get_client_by_id(clients, choice):
     """ Get the client socket based on user choise """
     for id, info in clients.items():
         if int(choice) == id:
-            if info['status'] == 'online':
                 return info
-            else:
-                raise Exception("The current client is offline")
     raise Exception("This session ID is not valid")
-        
+
+def remove_client(cl_id):
+    """Remove client from the list after killing the session """
+    for id, info in clients.items():
+        if int(cl_id) == id:
+            del clients[id]
+            break
+        else:
+            print(f"{cl.yellow}[!] Session {cl_id} not found{cl.reset}")
+    print(f"{cl.light_green}[+] Session {cl_id} removed{cl.reset}")
+    
 def client_disconnection(ip, port, clinfo):
     """Changes the status when a client is disconnected """
     with client_lock:

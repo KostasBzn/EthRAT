@@ -11,8 +11,9 @@ def show_main_help():
     table.add_column("Description", min_width=25)
     
     table.add_row("listen", "Wait for clients")
-    table.add_row("sessions", "List all connected clients")
-    table.add_row("sessions <ID>", "Interact with specific client")
+    table.add_row("sessions", "List all sessions")
+    table.add_row("sessions <ID>", "Interact with specific session")
+    table.add_row("sessions kill <ID>", "Kill a session")
     table.add_row("broadcast", "Send command to all clients")
     table.add_row("exit", "Shutdown the server")
     table.add_row("help", "Show this menu")

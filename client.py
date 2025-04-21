@@ -49,6 +49,9 @@ def get_ip_info():
         except Exception as e:
             return f"Error getting IP info: {e}".encode()
     
+def kill_connection(sock):
+        sock.close()
+        sys.exit()
 
 def handle_cmd(sock):
     try:
@@ -61,19 +64,25 @@ def handle_cmd(sock):
                 if cmd == "getip":
                     output = get_ip_info()
                     send(sock, output)
+
+                elif cmd.lower() == "kill":
+                    kill_connection(sock)
+                    
                 else:
                     response = f"Received cmd: {cmd}"
                     print(response)
             except socket.error as e:
-                print(f"Connection error: {e}")
+                print(f"Error cmd: {e}")
                 sock.close()
                 sys.exit(0)
                 break
                 
-    except KeyboardInterrupt:
-        print("\nClient shutting down gracefully...")
+    except Exception as e:
+        print("\nCommand handler error: {e}")
         sock.close()
         sys.exit(0)
+
+
 
 
 def gsi():
