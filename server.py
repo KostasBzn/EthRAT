@@ -1,6 +1,5 @@
 from src.ui.colors import Colors as cl
 from src.ui.art import banner
-from src.utils.client_handler import handle_client
 from src.utils.command_handler import main_loop
 from datetime import datetime
 import argparse
@@ -21,15 +20,11 @@ def server():
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((args.host, args.port))
         sock.listen()
-        
         banner()
-        print(f"{cl.cyan }[*] Listening on {args.host}:{args.port}{cl.reset} {cl.light_green}@ {datetime.now().strftime("%H:%M:%S")}{cl.reset}")
+        print(f"{cl.cyan }[*] Server started on {args.host}:{args.port}{cl.reset} {cl.light_green}@ {datetime.now().strftime("%H:%M:%S")}{cl.reset}")
         print(f"{cl.teal}[*] Type 'help' for commands or 'exit' to shutdown.{cl.reset}\n")
-
-        main_loop()
-        handle_client(sock)
-        
-
+        main_loop(sock)
+                    
     except (KeyboardInterrupt):
         print(f"{cl.yellow} [*] Interrupted by user, shutting down the server...")
         sock.close()

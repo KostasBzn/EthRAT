@@ -1,22 +1,20 @@
-from src.ui.colors import Colors as cl
-from rich.console import Console
-from rich.table import Table
+import socket
+import platform
+import uuid
 
 def show_main_help():
-    """Displays the main command help menu"""
-    console = Console()
-    
-    table = Table(title=f"{cl.cyan}Main Command Menu{cl.reset}", show_header=True, header_style="bold magenta")
-    table.add_column("Command", style="dim", width=12)
-    table.add_column("Description", min_width=20)
-    
-    # Add commands
-    table.add_row("sessions", "List all connected clients")
-    table.add_row("sessions [ID]", "Interact with specific client")
-    table.add_row("broadcast", "Send command to all clients")
-    table.add_row("exit", "Shutdown the server")
-    table.add_row("help", "Show this menu")
-    
-    console.print(table)
+    ARC = platform.node()
+    local_ip = str(socket.gethostbyname(socket.gethostname()))
+    mac = uuid.getnode()
+    mac_str = ':'.join(['{:02x}'.format((mac >> ele) & 0xff) for ele in range(40, -1, -8)])
+    print(ARC)
+    print(local_ip)
+    print(mac_str)
 
 show_main_help()
+
+
+def get_mac_address():
+    mac = uuid.getnode()
+    mac_str = ':'.join(['{:02x}'.format((mac >> ele) & 0xff) for ele in range(40, -1, -8)])
+    return mac_str

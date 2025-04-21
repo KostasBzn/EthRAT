@@ -3,6 +3,9 @@ import threading
 from threading import Lock
 import socket
 from datetime import datetime
+from rich.console import Console
+from rich.table import Table
+import json
 
 clients = {}
 client_lock = Lock()
@@ -10,10 +13,17 @@ client_lock = Lock()
 def list_clients(clients):
     """ Returns the list of the connected clients """
     if clients:
-        print(f"{cl.purple}ID |\tIP                 |\tPORT   |\tHOSTNAME                   |\tSTATUS   |\tLAST SEEN    |{cl.reset}")
-        print(f"{cl.purple}___|\t___________________|\t_______|\t___________________________|\t_________|\t_____________|{cl.reset}")
+        console = Console()
+        table = Table(title=f"{cl.cyan}Sessions{cl.reset}", show_header=True, header_style="bold purple")
+        table.add_column("ID", min_width=5)
+        table.add_column("IP", min_width=20)
+        table.add_column("PORT", min_width=20)
+        table.add_column("HOSTNAME", min_width=20)
+        table.add_column("STATUS", min_width=20)
+        table.add_column("LAST SEEN", min_width=20)
         for id, info in clients.items():
-             print(f"{cl.light_green}{id:<3}|\t{info['ip']:<19}|\t{info['port']:<7}|\t{info['hostname']:<25}|\t{info['status']:<9}|\t{info['last'].strftime('%Y-%m-%d %H:%M:%S'):<15}{cl.reset}")
+            table.add_row(str(id), info['ip'], str(info['port']), info['hostname'], info['status'], info['last'].strftime('%Y-%m-%d %H:%M:%S'))
+        console.print(table)
     else:
         print(f"{cl.red}[!] No clients connected.{cl.reset}")
 
@@ -27,20 +37,23 @@ def get_client_by_id(clients, choice):
                 raise Exception("The current client is offline")
     raise Exception("This session ID is not valid")
         
-def client_disconnection(ip, port):
+def client_disconnection(ip, port, clinfo):
     """Changes the status when a client is disconnected """
     with client_lock:
         for cl_id, cl_info in clients.items():
-            if cl_info['ip'] == ip and cl_info['port'] == port:
+            if cl_info['mac'] == clinfo['mac'] or cl_info['port'] == port:
                 cl_info['status'] = "offline"
                 cl_info['last'] = datetime.now()
-    print(f"{cl.yellow}[!] Client {cl_info['ip'] }:{port} disconnected{cl.reset} ")
+    #print(f"{cl.yellow}[!] Client {cl_info['ip'] }:{port} disconnected{cl.reset} ")
 
-def client_connection(client_socket, addr):
+def client_connection(client_socket, addr, clinfo):
     """Check if the client was previously connected before we add him"""
     for cl_id, cl_info in clients.items():
-        if cl_info['ip'] == addr[0]:
+        if cl_info['mac'] == clinfo['mac']:
             cl_info['status'] = "online"
+            cl_info['port'] = addr[1]
+            cl_info['ip'] = addr[0]
+            cl_info['local_ip'] = clinfo['lip']
             cl_info['last'] = datetime.now()
             print(f"{cl.green}[+] Client {addr[0]:}:{addr[1]} is online{cl.reset}")
             return   
@@ -48,11 +61,12 @@ def client_connection(client_socket, addr):
         cl_id = max(clients.keys(), default=-1) + 1
         clients[cl_id] = {
             "ip": addr[0],
-            "local_ip": "unknown",
             "port": addr[1],
             "socket": client_socket,
+            "local_ip": clinfo['lip'],
+            "hostname": clinfo['hname'],
+            "mac": clinfo['mac'],
             "status": "online",
-            "hostname": "unknown",
             "last" : datetime.now()
         }
     print(f"{cl.green}[+] New client {addr[0]:}:{addr[1]} connected{cl.reset} ")
@@ -60,30 +74,30 @@ def client_connection(client_socket, addr):
 def handle_client(sock):
     """Accepts a single client connection """
     try:
-        while True:
-            try:
-                client_socket, addr = sock.accept()
-                client_connection(client_socket, addr)
-                threading.Thread(target=monitor_client, args=(client_socket, addr), daemon=True).start()
-            except (OSError, socket.error) as e:
-                print(f"{cl.red}[!] Error accepting client: {e}{cl.reset}")
-    except Exception as e:
-        print(f"{cl.red}[!] Unexpected error in handle_client: {e}{cl.reset}")
+        client_socket, addr = sock.accept()
+        data = client_socket.recv(1024)
+        if data:
+           clinfo = json.loads(data.decode())
+        client_connection(client_socket, addr, clinfo)
+        threading.Thread(target=monitor_client, args=(client_socket, addr, clinfo), daemon=True).start()
+    except (Exception, OSError, socket.error) as e:
+        print(f"{cl.red}[!] Error accepting client: {e}{cl.reset}")
 
-def monitor_client(client_socket, addr):
+
+def monitor_client(client_socket, addr, clinfo):
     """Handles disconnections"""
     try:
         while True:
             try:
                 data = client_socket.recv(1, socket.MSG_PEEK)
                 if not data: 
-                    client_disconnection(addr[0], addr[1])
+                    client_disconnection(addr[0], addr[1], clinfo)
                     break
             except (OSError, socket.error ) as e:
                 print(f"{cl.red}[!] Socket error with client {addr[0]}:{addr[1]}: {e}{cl.reset}")
-                client_disconnection(addr[0], addr[1])
+                client_disconnection(addr[0], addr[1], clinfo)
                 break
     except Exception as e:
         print(f"{cl.red}[!] Error in monitor_client ({addr[0]}:{addr[1]}): {e}{cl.reset}")
-        client_disconnection(addr[0], addr[1])
+        client_disconnection(addr[0], addr[1], clinfo)
         client_socket.close()

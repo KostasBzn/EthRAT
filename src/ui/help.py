@@ -7,11 +7,12 @@ def show_main_help():
     console = Console()
     
     table = Table(title=f"{cl.cyan}Main Command Menu{cl.reset}", show_header=True, header_style="bold magenta")
-    table.add_column("Command", style="dim", width=12)
-    table.add_column("Description", min_width=20)
+    table.add_column("Command", style="dim", width=16)
+    table.add_column("Description", min_width=25)
     
+    table.add_row("listen", "Wait for clients")
     table.add_row("sessions", "List all connected clients")
-    table.add_row("sessions [ID]", "Interact with specific client")
+    table.add_row("sessions <ID>", "Interact with specific client")
     table.add_row("broadcast", "Send command to all clients")
     table.add_row("exit", "Shutdown the server")
     table.add_row("help", "Show this menu")
@@ -23,8 +24,8 @@ def show_client_help():
     console = Console()
     
     table = Table(title=f"{cl.cyan}Client Session Commands{cl.reset}", show_header=True, header_style="bold yellow")
-    table.add_column("Command", style="dim", width=12)
-    table.add_column("Description", min_width=20)
+    table.add_column("Command", style="dim", width=16)
+    table.add_column("Description", min_width=25)
     
     table.add_row("shell", "Start interactive shell")
     table.add_row("download", "Download file/folder from client")
