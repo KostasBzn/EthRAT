@@ -1,11 +1,11 @@
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.completion import WordCompleter
-import json
 from src.ui.colors import Colors as cl
 from src.utils.client_handler import get_client_by_id, list_clients, clients, handle_client
 from src.ui.help import show_main_help, show_client_help
 from src.utils.net_io import recv, send
+from src.modules.get_ip import print_ip
 
 
 
@@ -74,13 +74,12 @@ def client_loop(client_info):
                 print(f"{cl.green}[+] Uploading..{cl.reset}")
                 
             elif cmd == "getip":
+                print(f"{cl.cyan}[*] Requesting IP information...{cl.reset}")
                 send(client_info['socket'], cmd)
                 data = recv(client_info['socket'])
                 if data:
-                    ip_info = json.loads(data.decode())
-                print(f"    Local IP: {cl.light_green}{ip_info.get('lip', 'unknown')}{cl.reset}")
-                print(f"    Public IP: {cl.light_green}{ip_info.get('pip', 'unknown')}{cl.reset}")
-            
+                    print_ip(data)
+                
             elif cmd == "kill":
                 send(client_info['socket'], cmd)
                 print(f"{cl.blue}[-] Killing the session with the client{cl.reset}")
