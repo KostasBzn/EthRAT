@@ -7,7 +7,7 @@ def show_main_help():
     console = Console()
     
     table = Table(title=f"{cl.cyan}Main Command Menu{cl.reset}", show_header=True, header_style="bold magenta")
-    table.add_column("Command", style="dim", width=16)
+    table.add_column("Command", style="dim", min_width=16)
     table.add_column("Description", min_width=25)
     
     table.add_row("listen", "Wait for clients")
