@@ -34,7 +34,7 @@ Eth Rat is written to help practice remote shell techniques in a safe and ethica
    - `sessions kill <ID` – Kill a session
    - `getip` – Retrieve the client's public IP.  
    - `cd <navigation commands>` – Change the working directory on the client.  
-   - `download <file/folder>` – Downloads the file or folder.
+   - `download <file/folder>` – Downloads file or folder from the current directory.
    - `upload` – Opens file dialog to choose a file to push to the client.
    - `shell` – Open a shell session.  
    - `back` – Return to the main menu.  
