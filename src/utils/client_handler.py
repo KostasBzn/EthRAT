@@ -63,6 +63,7 @@ def client_connection(client_socket, addr, clinfo):
             cl_info['status'] = "online"
             cl_info['port'] = addr[1]
             cl_info['ip'] = addr[0]
+            cl_info['socket'] = client_socket
             cl_info['local_ip'] = clinfo['lip']
             cl_info['last'] = datetime.now()
             print(f"{cl.green}[+] Client {addr[0]:}:{addr[1]} is online{cl.reset}")
