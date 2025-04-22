@@ -36,7 +36,7 @@ Eth Rat is written to help practice remote shell techniques in a safe and ethica
    - `cd <navigation commands>` – Change the working directory on the client.  
    - `download <file/folder>` – Downloads the file or folder.
    - `upload` – Opens file dialog to choose a file to push to the client.
-   - `kill` – Kill the current client connection
+   - `shell` – Open a shell session.  
    - `back` – Return to the main menu.  
    - `exit` – Shut down the server.  
    - And more. Use the `help` function for all the available commands
