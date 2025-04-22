@@ -21,20 +21,25 @@
 Eth Rat is written to help practice remote shell techniques in a safe and ethical manner. It is **not intended for malicious use**.
 
 ## Usage
-1. **Start the server** on your machine.  
+1. **Start the server**  
+   ```bash
+   python server.py -lhost 0.0.0.0 -lport 4444
+   ```
 2. **Connect clients** to the server.  
-3. **Use the interactive command loop** to execute remote commands.  
+3. **Manage sessions** Once clients are connected, you can interact with them through an interactive session system.
 4. Supported commands:
    - `help` – Help menu with available commands 
-   - `list` – List the connected clients.
-   - `0` – Broadcast mode.
+   - `sesssions` – List the connected clients.
+   - `sessions <ID>` – Interact with a specific client session
+   - `sessions kill <ID` – Kill a session
    - `getip` – Retrieve the client's public IP.  
    - `cd <navigation commands>` – Change the working directory on the client.  
-   - `download <file/folder>` – Downloads the file or folder.
+   - `download <file/folder>` – Downloads file or folder from the current directory.
    - `upload` – Opens file dialog to choose a file to push to the client.
-   - `kill` – Kill the current client connection
+   - `shell` – Open a shell session.  
    - `back` – Return to the main menu.  
    - `exit` – Shut down the server.  
+   - And more. Use the `help` function for all the available commands
 
 ## Ethical Disclaimer
 This tool is **strictly for educational and ethical testing purposes only**. **Misuse is prohibited** and may violate laws.
