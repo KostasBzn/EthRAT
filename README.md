@@ -13,7 +13,7 @@
 - **Directory Navigation** – Use `cd` to navigate directories on the client.   
 
 ## Project Preview
-![Tool Screenshot](https://raw.githubusercontent.com/KostasBzn/EthRAT/refs/heads/main/png/Screenshot1.png)
+![Tool Screenshot](https://raw.githubusercontent.com/KostasBzn/EthRAT/refs/heads/main/png/Screenshot12.png)
 
 
 
