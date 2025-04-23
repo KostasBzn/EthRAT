@@ -34,8 +34,7 @@ Eth Rat is written to help practice remote shell techniques in a safe and ethica
    ```
 2. **Connect clients** to the server.  
 3. **Manage sessions** Once clients are connected, you can interact with them through an interactive session system.
-4. Supported commands:
-   - Use `help` to see all the available commands 
+4. **Use** `help` to see all the available commands 
 
 
 ## Ethical Disclaimer
