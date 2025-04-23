@@ -7,7 +7,7 @@
 - **Directory Navigation** – Use `cd` to navigate directories on the client.
 - **Download Files/Folders from Client** – Download single files or whole directories. 
 - **Push files to Client** – Send files to the clients current directory.
-- **Persistence** – Attempts persistent connection even after clients device reboots.
+- **Persistence** – Implements startup persistence for Windows and Linux clients.
 - **Multi-Client Management** – Manage multiple clients at once.  
 - **Cross-Platform Compatibility** – Works on **Windows and Linux**.  
 - **Educational Focus** – Built for **learning and testing** in a responsible manner.  
