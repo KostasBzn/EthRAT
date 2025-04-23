@@ -32,6 +32,7 @@ def show_client_help():
     table.add_row("download", "Download file/folder from client")
     table.add_row("upload", "Upload file to client")
     table.add_row("getip", "Get public and local ip from the client")
+    table.add_row("persistence", "Attempts persistent connection when client reboots")
     table.add_row("back", "Return to main command promt")
     table.add_row("help", "Show this menu")
     
