@@ -28,13 +28,17 @@ Eth Rat is written to help practice remote shell techniques in a safe and ethica
 - Always test in a **controlled lab environment**.
 
 ## Usage
-1. **Start the server**  
+1. **Install the requirements**  
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Start the server**  
    ```bash
    python server.py -lhost 0.0.0.0 -lport 4444
    ```
-2. **Connect clients** to the server.  
-3. **Manage sessions** Once clients are connected, you can interact with them through an interactive session system.
-4. **Use** `help` to see all the available commands 
+3. **Connect clients** to the server.  
+4. **Manage sessions** Once clients are connected, you can interact with them through an interactive session system.
+5. **Use** `help` to see all the available commands 
 
 
 ## Ethical Disclaimer
