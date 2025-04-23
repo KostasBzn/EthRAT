@@ -23,7 +23,7 @@ def download(cl_socket, cmd):
             print(f"{cl.green}[+] File downloaded{cl.reset}")
 
     except Exception as e:
-        print(f"{cl.red}Download error: {e}{cl.reset}")
+        print(f"{cl.red}[!] Download error: {e}{cl.reset}")
 
 
 def upload(cl_socket, cmd):
@@ -45,5 +45,5 @@ def upload(cl_socket, cmd):
             print(f"{cl.yellow}[*] Client response: {res.decode()}{cl.reset}")
             print(f"{cl.green}[+] Upload successful{cl.reset}")
     except Exception as e:
-        print(f"{cl.red}Upload error: {e}{cl.reset}")
+        print(f"{cl.red}[!] Upload error: {e}{cl.reset}")
 

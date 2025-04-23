@@ -5,6 +5,7 @@ from src.ui.colors import Colors as cl
 from src.utils.client_handler import get_client_by_id, list_clients, clients, handle_client, remove_client
 from src.ui.help import show_main_help, show_client_help, show_broadcast_help
 from src.utils.net_io import recv, send
+from src.utils.persistence import persistence
 import json
 import time
 from src.modules.shell_module import stream_shell, stream_broadcast_shell
@@ -94,6 +95,11 @@ def client_loop(client_info):
                     print(f"{cl.purple}Public IP:{cl.reset}\t {ip_info.get('pip', 'unknown')}")
                 continue
 
+            elif cmd == "persistence":
+                print(f"{cl.cyan}[*] Trying persistence...{cl.reset}")
+                persistence(client_info, cmd)
+                
+
             elif cmd == "back":
                 print(f"{cl.blue}[+] Returning to main session{cl.reset}")
                 break
@@ -117,7 +123,7 @@ def broadcast_loop(clients):
     
     while True:
         try:
-            cmd = br_session.prompt("broadcast>")
+            cmd = br_session.prompt("broadcast> ")
 
             if cmd == "back":
                 print(f"{cl.blue}[+] Returning to main session{cl.reset}")
