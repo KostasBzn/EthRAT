@@ -42,10 +42,11 @@ def remove_client(cl_id):
     for id, info in clients.items():
         if int(cl_id) == id:
             del clients[id]
+            print(f"{cl.light_green}[+] Session {cl_id} removed{cl.reset}")
             break
-        else:
-            print(f"{cl.yellow}[!] Session {cl_id} not found{cl.reset}")
-    print(f"{cl.light_green}[+] Session {cl_id} removed{cl.reset}")
+    else:
+        print(f"{cl.yellow}[!] Session {cl_id} not found{cl.reset}")
+    
     
 def client_disconnection(ip, port, clinfo):
     """Changes the status when a client is disconnected """
