@@ -29,7 +29,7 @@ def show_client_help():
     table.add_column("Description", min_width=25)
     
     table.add_row("shell", "Start interactive shell")
-    table.add_row("download", "Download file/folder from client")
+    table.add_row("download <file>", "Download file/folder from client")
     table.add_row("upload", "Upload file to client")
     table.add_row("getip", "Get public and local ip from the client")
     table.add_row("persistence", "Attempts persistent connection when client reboots")
